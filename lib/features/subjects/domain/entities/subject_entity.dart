@@ -1,6 +1,6 @@
 // lib/features/subjects/domain/entities/subject_entity.dart
 class SubjectEntity {
-  final String? id; // UUID from Supabase
+  final String? id; // Document ID from Firestore
 
   final String subjectName;
 

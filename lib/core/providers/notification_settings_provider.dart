@@ -1,75 +1,129 @@
 // lib/core/providers/notification_settings_provider.dart
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '/core/services/firebase_service.dart';
+import '/features/settings/data/repositories/settings_repository_impl.dart';
 
 class NotificationSettingsProvider extends ChangeNotifier {
-  static const String _scheduleReminderKey = 'schedule_reminder_minutes';
-  static const String _examReminderKey = 'exam_reminder_minutes';
-  static const String _enableScheduleNotificationsKey =
-      'enable_schedule_notifications';
-  static const String _enableExamNotificationsKey = 'enable_exam_notifications';
-
-  late SharedPreferences _prefs;
+  final FirebaseService _firebase = FirebaseService();
+  final SettingsRepositoryImpl _settingsRepo = SettingsRepositoryImpl();
 
   // Các giá trị mặc định
   int _scheduleReminderMinutes = 15;
   int _examReminderMinutes = 60;
   bool _enableScheduleNotifications = true;
   bool _enableExamNotifications = true;
+  bool _isLoading = false;
 
   // Getters
   int get scheduleReminderMinutes => _scheduleReminderMinutes;
   int get examReminderMinutes => _examReminderMinutes;
   bool get enableScheduleNotifications => _enableScheduleNotifications;
   bool get enableExamNotifications => _enableExamNotifications;
+  bool get isLoading => _isLoading;
 
   // Danh sách các tùy chọn thời gian
   static const List<int> reminderOptions = [5, 10, 15, 30, 60];
 
   // Khởi tạo provider
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
     await _loadSettings();
   }
 
-  // Tải cài đặt từ SharedPreferences
+  // Tải cài đặt từ Firebase
   Future<void> _loadSettings() async {
-    _scheduleReminderMinutes =
-        _prefs.getInt(_scheduleReminderKey) ?? 15;
-    _examReminderMinutes = _prefs.getInt(_examReminderKey) ?? 60;
-    _enableScheduleNotifications =
-        _prefs.getBool(_enableScheduleNotificationsKey) ?? true;
-    _enableExamNotifications =
-        _prefs.getBool(_enableExamNotificationsKey) ?? true;
-    notifyListeners();
+    try {
+      if (!_firebase.isAuthenticated) return;
+      
+      _isLoading = true;
+      notifyListeners();
+
+      final userId = _firebase.currentUserId;
+      if (userId == null) return;
+
+      final settings = await _settingsRepo.getSettings(userId);
+      if (settings != null) {
+        _scheduleReminderMinutes = settings.scheduleReminderMinutes;
+        _examReminderMinutes = settings.examReminderMinutes;
+        _enableScheduleNotifications = settings.enableScheduleNotifications;
+        _enableExamNotifications = settings.enableExamNotifications;
+      }
+    } catch (e) {
+      debugPrint('❌ Error loading notification settings: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   // Cập nhật thời gian nhắc nhở cho buổi học
   Future<void> setScheduleReminderMinutes(int minutes) async {
-    _scheduleReminderMinutes = minutes;
-    await _prefs.setInt(_scheduleReminderKey, minutes);
-    notifyListeners();
+    try {
+      _scheduleReminderMinutes = minutes;
+      notifyListeners();
+      
+      await _saveToFirebase();
+    } catch (e) {
+      debugPrint('❌ Error saving schedule reminder: $e');
+    }
   }
 
   // Cập nhật thời gian nhắc nhở cho lịch thi
   Future<void> setExamReminderMinutes(int minutes) async {
-    _examReminderMinutes = minutes;
-    await _prefs.setInt(_examReminderKey, minutes);
-    notifyListeners();
+    try {
+      _examReminderMinutes = minutes;
+      notifyListeners();
+      
+      await _saveToFirebase();
+    } catch (e) {
+      debugPrint('❌ Error saving exam reminder: $e');
+    }
   }
 
   // Bật/tắt thông báo buổi học
   Future<void> setEnableScheduleNotifications(bool enable) async {
-    _enableScheduleNotifications = enable;
-    await _prefs.setBool(_enableScheduleNotificationsKey, enable);
-    notifyListeners();
+    try {
+      _enableScheduleNotifications = enable;
+      notifyListeners();
+      
+      await _saveToFirebase();
+    } catch (e) {
+      debugPrint('❌ Error saving schedule notification setting: $e');
+    }
   }
 
   // Bật/tắt thông báo lịch thi
   Future<void> setEnableExamNotifications(bool enable) async {
-    _enableExamNotifications = enable;
-    await _prefs.setBool(_enableExamNotificationsKey, enable);
-    notifyListeners();
+    try {
+      _enableExamNotifications = enable;
+      notifyListeners();
+      
+      await _saveToFirebase();
+    } catch (e) {
+      debugPrint('❌ Error saving exam notification setting: $e');
+    }
+  }
+
+  // Lưu tất cả settings vào Firebase
+  Future<void> _saveToFirebase() async {
+    if (!_firebase.isAuthenticated) return;
+    
+    final userId = _firebase.currentUserId;
+    if (userId == null) return;
+
+    // Load current settings first
+    final currentSettings = await _settingsRepo.getSettings(userId);
+    if (currentSettings == null) return;
+
+    // Update with new notification settings
+    final updatedSettings = currentSettings.copyWith(
+      scheduleReminderMinutes: _scheduleReminderMinutes,
+      examReminderMinutes: _examReminderMinutes,
+      enableScheduleNotifications: _enableScheduleNotifications,
+      enableExamNotifications: _enableExamNotifications,
+      updatedAt: DateTime.now(),
+    );
+
+    await _settingsRepo.saveSettings(updatedSettings);
   }
 
   // Lấy text mô tả thời gian nhắc nhở

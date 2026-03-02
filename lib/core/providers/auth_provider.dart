@@ -23,14 +23,14 @@ class AuthProvider extends ChangeNotifier {
       final user = _authService.getCurrentUser();
       _isAuthenticated = user != null;
       _userEmail = user?.email;
-      _userId = user?.id;
+      _userId = user?.uid;
       notifyListeners();
 
       // Listen to auth state changes
-      _authService.getAuthStateChanges().listen((state) {
-        _isAuthenticated = state.session != null;
-        _userEmail = state.session?.user.email;
-        _userId = state.session?.user.id;
+      _authService.getAuthStateChanges().listen((user) {
+        _isAuthenticated = user != null;
+        _userEmail = user?.email;
+        _userId = user?.uid;
         notifyListeners();
       });
     } catch (e) {
@@ -76,13 +76,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _authService.signIn(
+      final credential = await _authService.signIn(
         email: email,
         password: password,
       );
       _isAuthenticated = true;
-      _userEmail = response.user?.email;
-      _userId = response.user?.id;
+      _userEmail = credential.user?.email;
+      _userId = credential.user?.uid;
       _isLoading = false;
       notifyListeners();
       return true;

@@ -1,6 +1,6 @@
 // lib/features/schedule/domain/entities/schedule_entity.dart
 class ScheduleEntity {
-  final String? id; // schedule_id UUID from Supabase
+  final String? id; // schedule_id from Firestore
 
   final String? subjectId; // subject_id UUID
 

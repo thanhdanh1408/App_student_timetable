@@ -91,6 +91,48 @@ class ScheduleViewModel with ChangeNotifier {
     }
   }
 
+  /// Kiểm tra xung đột lịch học (thời gian trùng)
+  /// Trả về null nếu không có xung đột, hoặc tên môn học bị trùng
+  String? checkScheduleConflict(ScheduleEntity newSchedule) {
+    // Không kiểm tra với chính nó khi update
+    final otherSchedules = _schedules.where((s) => s.id != newSchedule.id).toList();
+
+    for (final existing in otherSchedules) {
+      // Kiểm tra cùng ngày
+      if (existing.dayOfWeek == newSchedule.dayOfWeek) {
+        // Parse thời gian
+        final existingStart = _parseTimeToMinutes(existing.startTime);
+        final existingEnd = _parseTimeToMinutes(existing.endTime);
+        final newStart = _parseTimeToMinutes(newSchedule.startTime);
+        final newEnd = _parseTimeToMinutes(newSchedule.endTime);
+
+        if (existingStart == null || existingEnd == null || newStart == null || newEnd == null) {
+          continue; // Skip nếu không parse được
+        }
+
+        // Kiểm tra overlap: (start1 < end2) AND (start2 < end1)
+        if (newStart < existingEnd && existingStart < newEnd) {
+          return existing.subjectName ?? 'Một môn học khác';
+        }
+      }
+    }
+    return null; // Không có xung đột
+  }
+
+  /// Parse time string "HH:mm" thành tổng số phút
+  int? _parseTimeToMinutes(String? time) {
+    if (time == null || time.isEmpty) return null;
+    try {
+      final parts = time.split(':');
+      if (parts.length < 2) return null;
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return hour * 60 + minute;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _scheduleNotificationForSchedule(ScheduleEntity schedule) async {
     print('📅 [ENTER] _scheduleNotificationForSchedule for ${schedule.subjectName}, ID: ${schedule.id}');
 

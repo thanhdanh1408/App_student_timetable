@@ -175,7 +175,6 @@ class _NotificationPageState extends State<NotificationPage>
                   PopupMenuItem(
                     child: const Text('🗑️ Xóa'),
                     onTap: () {
-                      // Delete by index (legacy Hive key)
                       context.read<NotificationViewModel>().deleteByKey(index);
                     },
                   ),

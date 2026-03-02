@@ -97,6 +97,16 @@ class SubjectsViewModel with ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Kiểm tra tên môn học đã tồn tại chưa
+  /// Trả về true nếu tên đã tồn tại (trùng)
+  bool checkDuplicateSubjectName(String name, {String? excludeId}) {
+    final trimmedName = name.trim().toLowerCase();
+    return _subjects.any((s) => 
+      s.id != excludeId && 
+      s.subjectName.trim().toLowerCase() == trimmedName
+    );
+  }
 }
 
 // Backward-compatible alias (old naming used across the UI).

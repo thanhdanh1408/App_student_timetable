@@ -1,6 +1,8 @@
 // lib/features/subjects/presentation/widgets/subject_form_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../domain/entities/subject_entity.dart';
+import '../viewmodels/subjects_viewmodel.dart';
 
 class SubjectFormDialog extends StatefulWidget {
   final SubjectEntity? subject;
@@ -192,6 +194,23 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
           onPressed: () async {
             if (_formKey.currentState!.validate()) {
               try {
+                // Validation 2: Kiểm tra tên môn học trùng
+                final viewModel = context.read<SubjectsViewModel>();
+                final isDuplicate = viewModel.checkDuplicateSubjectName(
+                  _nameCtrl.text.trim(),
+                  excludeId: widget.subject?.id,
+                );
+                if (isDuplicate) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tên môn học đã tồn tại, vui lòng chọn tên khác'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
                 final subject = SubjectEntity(
                   id: widget.subject?.id,
                   subjectName: _nameCtrl.text.trim(),

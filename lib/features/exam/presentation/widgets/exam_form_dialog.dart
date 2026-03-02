@@ -1,7 +1,9 @@
 // lib/features/exam/presentation/widgets/exam_form_dialog.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../domain/entities/exam_entity.dart';
 import '../../../subjects/domain/entities/subject_entity.dart';
+import '../viewmodels/exam_viewmodel.dart';
 
 class ExamFormDialog extends StatefulWidget {
   final ExamEntity? exam;
@@ -186,6 +188,21 @@ class _ExamFormDialogState extends State<ExamFormDialog> {
                   color: _selectedSubject?.color,
                   isCompleted: false,
                 );
+
+                // Validation 3: Kiểm tra xung đột lịch thi
+                final viewModel = context.read<ExamViewModel>();
+                final conflictSubject = viewModel.checkExamConflict(exam);
+                if (conflictSubject != null) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lịch thi bị trùng với môn "$conflictSubject" (các kỳ thi phải cách nhau ít nhất 2 giờ)'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
                 await widget.onSave(exam);
                 if (!context.mounted) return;
                 Navigator.pop(context);

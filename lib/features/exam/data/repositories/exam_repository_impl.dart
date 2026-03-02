@@ -1,5 +1,6 @@
 // lib/features/exam/data/repositories/exam_repository_impl.dart
-import '/core/services/supabase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/services/firebase_service.dart';
 import '../../domain/entities/exam_entity.dart';
 import '../../domain/repositories/exam_repository.dart';
 
@@ -8,38 +9,56 @@ class ExamRepositoryImpl implements ExamRepository {
   factory ExamRepositoryImpl() => _instance;
   ExamRepositoryImpl._internal();
 
-  late SupabaseService _supabase = SupabaseService();
+  final FirebaseService _firebase = FirebaseService();
+
+  /// Get Firestore collection reference for exams
+  CollectionReference<Map<String, dynamic>> get _examsCollection =>
+      _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('exams');
+
+  /// Get Firestore collection reference for subjects
+  CollectionReference<Map<String, dynamic>> get _subjectsCollection =>
+      _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('subjects');
 
   @override
   Future<List<ExamEntity>> getAll() async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         print('❌ Not authenticated');
         return [];
       }
 
-      final userId = _supabase.currentUserId;
+      final userId = _firebase.currentUserId;
       if (userId == null) {
         print('❌ User ID is null');
         return [];
       }
 
-      // JOIN with subjects table to get subject and teacher names
-      // Filter by user_id through subjects table
-      final response = await _supabase.client
-          .from('exams')
-          .select('*, subjects!inner(subject_name, teacher_name, user_id)')
-          .eq('subjects.user_id', userId);
+      // First, get all subjects for this user (for denormalization)
+      final subjectsSnapshot = await _subjectsCollection.get();
+      final subjectsMap = <String, Map<String, dynamic>>{};
+      for (final doc in subjectsSnapshot.docs) {
+        subjectsMap[doc.id] = doc.data();
+      }
 
-      print('📋 Raw response from exams query: $response');
+      // Then get all exams
+      final snapshot = await _examsCollection.get();
 
-      final exams = (response as List).map((e) {
-        // Denormalize subject info from the joined data
-        final subjectData = e['subjects'] as Map<String, dynamic>?;
-        print('📋 Exam: ${e['exam_id']}, Subject data: $subjectData');
-        e['subject_name'] = subjectData?['subject_name'];
-        e['teacher_name'] = subjectData?['teacher_name'];
-        final exam = ExamEntity.fromJson(e);
+      print('📋 Raw response from exams query: ${snapshot.docs.length} docs');
+
+      final exams = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['exam_id'] = doc.id;
+
+        // Denormalize subject info
+        final subjectId = data['subject_id'] as String?;
+        if (subjectId != null && subjectsMap.containsKey(subjectId)) {
+          final subjectData = subjectsMap[subjectId]!;
+          data['subject_name'] = subjectData['subject_name'];
+          data['teacher_name'] = subjectData['teacher_name'];
+        }
+
+        print('📋 Exam: ${doc.id}, Subject: ${data['subject_name']}');
+        final exam = ExamEntity.fromJson(data);
         print(
           '✅ Denormalized exam - subjectName: ${exam.subjectName}, teacherName: ${exam.teacherName}',
         );
@@ -52,7 +71,7 @@ class ExamRepositoryImpl implements ExamRepository {
         return a.examDate!.compareTo(b.examDate!);
       });
 
-      print('✅ Loaded ${exams.length} exams from Supabase');
+      print('✅ Loaded ${exams.length} exams from Firestore');
       return exams;
     } catch (e) {
       print('❌ Error loading exams: $e');
@@ -63,16 +82,16 @@ class ExamRepositoryImpl implements ExamRepository {
   @override
   Future<String> add(ExamEntity exam) async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         throw Exception('Not authenticated');
       }
 
-      final userId = _supabase.currentUserId;
+      final userId = _firebase.currentUserId;
       if (userId == null) {
         throw Exception('User ID is null');
       }
 
-      final response = await _supabase.client.from('exams').insert({
+      final docRef = await _examsCollection.add({
         'subject_id': exam.subjectId,
         'exam_date': exam.examDate != null ? exam.examDate!.toIso8601String() : null,
         'exam_time': exam.examTime,
@@ -80,14 +99,10 @@ class ExamRepositoryImpl implements ExamRepository {
         'exam_room': exam.examRoom,
         'color': exam.color,
         'is_completed': exam.isCompleted,
-      }).select().single();
+      });
 
-      final examId = response['exam_id'] as String?;
-      if (examId == null || examId.isEmpty) {
-        throw Exception('Missing exam_id from insert response');
-      }
-
-      print('✅ Exam added to Supabase: ${exam.examName} (ID: $examId)');
+      final examId = docRef.id;
+      print('✅ Exam added to Firestore: ${exam.examName} (ID: $examId)');
       return examId;
     } catch (e) {
       print('❌ Error adding exam: $e');
@@ -98,7 +113,7 @@ class ExamRepositoryImpl implements ExamRepository {
   @override
   Future<void> update(ExamEntity exam) async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         throw Exception('Not authenticated');
       }
 
@@ -106,20 +121,17 @@ class ExamRepositoryImpl implements ExamRepository {
         throw Exception('Exam ID cannot be null');
       }
 
-      await _supabase.client
-          .from('exams')
-          .update({
-            'subject_id': exam.subjectId,
-            'exam_date': exam.examDate != null ? exam.examDate!.toIso8601String() : null,
-            'exam_time': exam.examTime,
-            'exam_name': exam.examName,
-            'exam_room': exam.examRoom,
-            'color': exam.color,
-            'is_completed': exam.isCompleted,
-          })
-          .eq('exam_id', exam.id!);
+      await _examsCollection.doc(exam.id!).update({
+        'subject_id': exam.subjectId,
+        'exam_date': exam.examDate != null ? exam.examDate!.toIso8601String() : null,
+        'exam_time': exam.examTime,
+        'exam_name': exam.examName,
+        'exam_room': exam.examRoom,
+        'color': exam.color,
+        'is_completed': exam.isCompleted,
+      });
 
-      print('✅ Exam updated in Supabase: ${exam.examName}');
+      print('✅ Exam updated in Firestore: ${exam.examName}');
     } catch (e) {
       print('❌ Error updating exam: $e');
       rethrow;
@@ -129,13 +141,13 @@ class ExamRepositoryImpl implements ExamRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         throw Exception('Not authenticated');
       }
 
-      await _supabase.client.from('exams').delete().eq('exam_id', id);
+      await _examsCollection.doc(id).delete();
 
-      print('✅ Exam deleted from Supabase: ID $id');
+      print('✅ Exam deleted from Firestore: ID $id');
     } catch (e) {
       print('❌ Error deleting exam: $e');
       rethrow;

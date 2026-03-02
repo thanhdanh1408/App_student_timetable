@@ -1,4 +1,5 @@
 // lib/core/services/notification_service.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
@@ -18,6 +19,13 @@ class NotificationService {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
+
+    // Local notifications không hoạt động đầy đủ trên web
+    if (kIsWeb) {
+      print('⚠️ Local notifications skipped on web platform');
+      _isInitialized = true;
+      return;
+    }
 
     // Initialize timezone and set location to Vietnam
     tzdata.initializeTimeZones();
@@ -91,6 +99,7 @@ class NotificationService {
     String type = 'schedule', // 'exam', 'schedule', or 'general'
   }) async {
     if (!_isInitialized) await initialize();
+    if (kIsWeb) return; // Skip on web
 
     // Convert String id to int hash for notification ID (required by Flutter notifications API)
     final notificationId = id.hashCode;
@@ -166,6 +175,8 @@ class NotificationService {
     if (!_isInitialized) {
       await initialize();
     }
+    if (kIsWeb) return; // Skip on web
+    
     final notificationId = id.hashCode;
     await _notifications.cancel(notificationId);
     print('🗑️ Cancelled notification #$notificationId (ID: $id)');
@@ -176,6 +187,8 @@ class NotificationService {
     if (!_isInitialized) {
       await initialize();
     }
+    if (kIsWeb) return; // Skip on web
+    
     await _notifications.cancelAll();
     print('🗑️ Cancelled all notifications');
   }
@@ -185,6 +198,8 @@ class NotificationService {
     if (!_isInitialized) {
       await initialize();
     }
+    if (kIsWeb) return []; // Return empty list on web
+    
     return await _notifications.pendingNotificationRequests();
   }
 
@@ -197,6 +212,7 @@ class NotificationService {
     String type = 'general',
   }) async {
     if (!_isInitialized) await initialize();
+    if (kIsWeb) return; // Skip on web
 
     final notificationId = id.hashCode;
 

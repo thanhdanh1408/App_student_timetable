@@ -1,6 +1,6 @@
 // lib/features/notifications/domain/entities/notification_entity.dart
 class NotificationEntity {
-  final String? id; // UUID from Supabase
+  final String? id; // Document ID from Firestore
   final String title;
   final String body;
   final String type; // 'exam', 'schedule', 'general'

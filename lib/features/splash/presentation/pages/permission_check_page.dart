@@ -1,4 +1,5 @@
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,12 @@ class _PermissionCheckPageState extends State<PermissionCheckPage> {
   }
 
   Future<void> _checkAndRequestPermissions() async {
+    // Permission handler không hoạt động trên web
+    if (kIsWeb) {
+      _navigateToNextScreen();
+      return;
+    }
+    
     final a = await Permission.notification.isDenied;
     final b = await Permission.calendar.isDenied;
     if (a || b) {

@@ -1,4 +1,5 @@
 // lib/core/services/background_task_handler.dart
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:workmanager/workmanager.dart';
 
 const String _examReminderTaskId = 'exam_reminder_task';
@@ -14,7 +15,6 @@ void callbackDispatcher() {
 
       // NOTE: Schedule reminders are handled in ScheduleViewModel when users add/update schedules.
       // Only exam reminders use background tasks to check for upcoming exams periodically.
-      // NOTE: Exam data is now fetched from Supabase via ExamViewModel, not from local Hive storage.
 
       if (task == _examReminderTaskId) {
         // Background task for periodic exam checks
@@ -42,6 +42,12 @@ class BackgroundTaskHandler {
 
   // Khởi tạo workmanager
   Future<void> init() async {
+    // WorkManager không hoạt động trên web
+    if (kIsWeb) {
+      print('⚠️ WorkManager skipped on web platform');
+      return;
+    }
+    
     await Workmanager().initialize(
       callbackDispatcher,
       isInDebugMode: false, // Tắt debug notifications
@@ -50,6 +56,9 @@ class BackgroundTaskHandler {
 
   // Đăng ký các background tasks
   Future<void> registerTasks() async {
+    // WorkManager không hoạt động trên web
+    if (kIsWeb) return;
+    
     // Exam reminders are scheduled with `flutter_local_notifications` when users add/update exams.
     // A periodic Workmanager task is not needed, and (when debug mode was enabled in older builds)
     // it can spam "Result: Success" notifications.
@@ -60,11 +69,13 @@ class BackgroundTaskHandler {
 
   // Hủy tất cả background tasks
   Future<void> cancelAllTasks() async {
+    if (kIsWeb) return;
     await Workmanager().cancelAll();
   }
 
   // Hủy một task cụ thể
   Future<void> cancelTask(String taskName) async {
+    if (kIsWeb) return;
     await Workmanager().cancelByUniqueName(taskName);
   }
 }

@@ -1,6 +1,6 @@
 // lib/features/authentication/domain/entities/user_entity.dart
 class UserEntity {
-  final String userId; // UUID from Supabase
+  final String userId; // UID from Firebase Auth
   final String fullname;
   final String email;
   final String? phone;

@@ -1,5 +1,6 @@
 // lib/features/notifications/data/repositories/notification_repository_impl.dart
-import '/core/services/supabase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/services/firebase_service.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
 
@@ -9,55 +10,62 @@ class NotificationRepositoryImpl implements NotificationRepository {
   factory NotificationRepositoryImpl() => _instance;
   NotificationRepositoryImpl._internal();
 
-  final SupabaseService _supabase = SupabaseService();
+  final FirebaseService _firebase = FirebaseService();
+
+  /// Get Firestore collection reference for notifications
+  CollectionReference<Map<String, dynamic>> get _notificationsCollection =>
+      _firebase.firestore
+          .collection('users')
+          .doc(_firebase.currentUserId)
+          .collection('notifications');
 
   @override
   Future<List<NotificationEntity>> getAll() async {
     try {
-      if (!_supabase.isAuthenticated) return [];
+      if (!_firebase.isAuthenticated) return [];
 
-      final userId = _supabase.currentUserId;
+      final userId = _firebase.currentUserId;
       if (userId == null) return [];
 
       final nowIso = DateTime.now().toUtc().toIso8601String();
 
-      try {
-        final response = await _supabase.client
-            .from('notifications')
-            .select()
-            .eq('user_id', userId)
-            // Only show notifications that are actually due.
-            .lte('scheduled_for', nowIso)
-            .order('scheduled_for', ascending: false)
-            .order('created_at', ascending: false);
+      // Query notifications that are due (scheduled_for <= now)
+      final snapshot = await _notificationsCollection
+          .where('scheduled_for', isLessThanOrEqualTo: nowIso)
+          .orderBy('scheduled_for', descending: true)
+          .get();
 
-        return (response as List)
-            .map((e) => NotificationEntity.fromJson(e as Map<String, dynamic>))
-            .toList();
-      } catch (_) {
-        // Backward-compatible fallback if DB hasn't been migrated yet.
-        final response = await _supabase.client
-            .from('notifications')
-            .select()
-            .eq('user_id', userId)
-            .order('created_at', ascending: false);
-
-        return (response as List)
-            .map((e) => NotificationEntity.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['notification_id'] = doc.id;
+        return NotificationEntity.fromJson(data);
+      }).toList();
     } catch (e) {
       print('❌ Error loading notifications: $e');
-      return [];
+      // Fallback: get all notifications without scheduled_for filter
+      try {
+        final snapshot = await _notificationsCollection
+            .orderBy('created_at', descending: true)
+            .get();
+
+        return snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['notification_id'] = doc.id;
+          return NotificationEntity.fromJson(data);
+        }).toList();
+      } catch (e2) {
+        print('❌ Fallback also failed: $e2');
+        return [];
+      }
     }
   }
 
   @override
   Future<void> add(NotificationEntity notification) async {
     try {
-      if (!_supabase.isAuthenticated) throw Exception('Not authenticated');
+      if (!_firebase.isAuthenticated) throw Exception('Not authenticated');
 
-      final userId = _supabase.currentUserId;
+      final userId = _firebase.currentUserId;
       if (userId == null) throw Exception('User ID is null');
 
       final payload = {
@@ -65,20 +73,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
         ...notification.toJson(),
       };
 
-      try {
-        await _supabase.client.from('notifications').insert(payload);
-      } catch (e) {
-        // Backward-compatible fallback if scheduled_for column isn't present yet.
-        if (e.toString().contains('scheduled_for')) {
-          final fallbackPayload = Map<String, dynamic>.from(payload)
-            ..remove('scheduled_for');
-          await _supabase.client.from('notifications').insert(fallbackPayload);
-        } else {
-          rethrow;
-        }
-      }
+      await _notificationsCollection.add(payload);
 
-      print('✅ Notification added to Supabase');
+      print('✅ Notification added to Firestore');
     } catch (e) {
       print('❌ Error adding notification: $e');
       rethrow;
@@ -94,33 +91,16 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<void> update(int key, NotificationEntity notification) async {
     try {
-      if (!_supabase.isAuthenticated) throw Exception('Not authenticated');
+      if (!_firebase.isAuthenticated) throw Exception('Not authenticated');
 
       final id = notification.id ?? await _resolveIdFromKey(key);
       if (id == null) throw Exception('Notification ID is null');
 
       final payload = notification.toJson();
 
-      try {
-        await _supabase.client
-            .from('notifications')
-            .update(payload)
-            .eq('notification_id', id);
-      } catch (e) {
-        // Backward-compatible fallback if scheduled_for column isn't present yet.
-        if (e.toString().contains('scheduled_for')) {
-          final fallbackPayload = Map<String, dynamic>.from(payload)
-            ..remove('scheduled_for');
-          await _supabase.client
-              .from('notifications')
-              .update(fallbackPayload)
-              .eq('notification_id', id);
-        } else {
-          rethrow;
-        }
-      }
+      await _notificationsCollection.doc(id).update(payload);
 
-      print('✅ Notification updated in Supabase');
+      print('✅ Notification updated in Firestore');
     } catch (e) {
       print('❌ Error updating notification: $e');
       rethrow;
@@ -130,7 +110,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<void> delete(int key) async {
     try {
-      if (!_supabase.isAuthenticated) throw Exception('Not authenticated');
+      if (!_firebase.isAuthenticated) throw Exception('Not authenticated');
 
       final id = await _resolveIdFromKey(key);
       if (id == null) throw Exception('Notification not found for key=$key');
@@ -144,11 +124,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   Future<void> deleteById(String id) async {
     try {
-      if (!_supabase.isAuthenticated) throw Exception('Not authenticated');
+      if (!_firebase.isAuthenticated) throw Exception('Not authenticated');
 
-      await _supabase.client.from('notifications').delete().eq('notification_id', id);
+      await _notificationsCollection.doc(id).delete();
 
-      print('✅ Notification deleted from Supabase');
+      print('✅ Notification deleted from Firestore');
     } catch (e) {
       print('❌ Error deleting notification by id: $e');
       rethrow;

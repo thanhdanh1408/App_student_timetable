@@ -1,5 +1,6 @@
 // lib/features/subjects/data/repositories/subjects_repository_impl.dart
-import '/core/services/supabase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/services/firebase_service.dart';
 import '../../domain/entities/subject_entity.dart';
 import '../../domain/repositories/subjects_repository.dart';
 
@@ -8,24 +9,29 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   factory SubjectsRepositoryImpl() => _instance;
   SubjectsRepositoryImpl._internal();
 
-  late SupabaseService _supabase = SupabaseService();
+  final FirebaseService _firebase = FirebaseService();
+
+  /// Get Firestore collection reference for subjects
+  CollectionReference<Map<String, dynamic>> get _subjectsCollection =>
+      _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('subjects');
 
   @override
   Future<List<SubjectEntity>> getAll() async {
     try {
-      if (!_supabase.isAuthenticated || _supabase.currentUserId == null) {
+      if (!_firebase.isAuthenticated || _firebase.currentUserId == null) {
         print('❌ Not authenticated');
         return [];
       }
 
-      final response = await _supabase.client
-          .from('subjects')
-          .select()
-          .eq('user_id', _supabase.currentUserId!);
+      final snapshot = await _subjectsCollection.get();
 
-      final subjects = (response as List).map((e) => SubjectEntity.fromJson(e)).toList();
+      final subjects = snapshot.docs.map((doc) {
+        final data = doc.data();
+        data['subject_id'] = doc.id;
+        return SubjectEntity.fromJson(data);
+      }).toList();
 
-      print('✅ Loaded ${subjects.length} subjects from Supabase');
+      print('✅ Loaded ${subjects.length} subjects from Firestore');
       return subjects;
     } catch (e) {
       print('❌ Error loading subjects: $e');
@@ -36,23 +42,23 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   @override
   Future<void> add(SubjectEntity subject) async {
     try {
-      if (!_supabase.isAuthenticated || _supabase.currentUserId == null) {
+      if (!_firebase.isAuthenticated || _firebase.currentUserId == null) {
         throw Exception('Not authenticated');
       }
 
       print('📝 [SubjectsRepository] Attempting to add subject: ${subject.subjectName}');
-      print('📝 [SubjectsRepository] User authenticated: ${_supabase.currentUserId}');
+      print('📝 [SubjectsRepository] User authenticated: ${_firebase.currentUserId}');
 
-      final response = await _supabase.client.from('subjects').insert({
-        'user_id': _supabase.currentUserId!,
+      final docRef = await _subjectsCollection.add({
+        'user_id': _firebase.currentUserId!,
         'subject_name': subject.subjectName,
         'teacher_name': subject.teacherName,
         'color': subject.color,
         'credit': subject.credit,
-      }).select();
+      });
 
-      print('✅ Subject added to Supabase: ${subject.subjectName}');
-      print('✅ Response: $response');
+      print('✅ Subject added to Firestore: ${subject.subjectName}');
+      print('✅ Document ID: ${docRef.id}');
     } catch (e) {
       print('❌ Error adding subject: $e');
       rethrow;
@@ -62,7 +68,7 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   @override
   Future<void> update(SubjectEntity subject) async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         throw Exception('Not authenticated');
       }
 
@@ -70,17 +76,14 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
         throw Exception('Subject ID cannot be null');
       }
 
-      await _supabase.client
-          .from('subjects')
-          .update({
-            'subject_name': subject.subjectName,
-            'teacher_name': subject.teacherName,
-            'color': subject.color,
-            'credit': subject.credit,
-          })
-          .eq('subject_id', subject.id!);
+      await _subjectsCollection.doc(subject.id!).update({
+        'subject_name': subject.subjectName,
+        'teacher_name': subject.teacherName,
+        'color': subject.color,
+        'credit': subject.credit,
+      });
 
-      print('✅ Subject updated in Supabase: ${subject.subjectName}');
+      print('✅ Subject updated in Firestore: ${subject.subjectName}');
     } catch (e) {
       print('❌ Error updating subject: $e');
       rethrow;
@@ -90,13 +93,13 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   @override
   Future<void> delete(String id) async {
     try {
-      if (!_supabase.isAuthenticated) {
+      if (!_firebase.isAuthenticated) {
         throw Exception('Not authenticated');
       }
 
-      await _supabase.client.from('subjects').delete().eq('subject_id', id.toString());
+      await _subjectsCollection.doc(id).delete();
 
-      print('✅ Subject deleted from Supabase: ID $id');
+      print('✅ Subject deleted from Firestore: ID $id');
     } catch (e) {
       print('❌ Error deleting subject: $e');
       rethrow;

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../subjects/presentation/viewmodels/subjects_viewmodel.dart';
 import '../../../subjects/domain/entities/subject_entity.dart';
 import '../../domain/entities/schedule_entity.dart';
+import '../viewmodels/schedule_viewmodel.dart';
 
 class ScheduleFormDialog extends StatefulWidget {
   final ScheduleEntity? schedule;
@@ -212,6 +213,20 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                 return;
               }
 
+              // Validation 4: Kiểm tra thời lượng buổi học (tối đa 6 giờ = 360 phút)
+              final durationMinutes = endMinutes - startMinutes;
+              if (durationMinutes > 360) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Thời lượng buổi học không được vượt quá 6 giờ'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+                return;
+              }
+
               try {
                 final schedule = ScheduleEntity(
                   id: widget.schedule?.id,
@@ -225,6 +240,21 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   color: _selectedSubject?.color,
                   isEnabled: true,
                 );
+
+                // Validation 1: Kiểm tra xung đột lịch học
+                final viewModel = context.read<ScheduleViewModel>();
+                final conflictSubject = viewModel.checkScheduleConflict(schedule);
+                if (conflictSubject != null) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Lịch học bị trùng với môn "$conflictSubject"'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
                 await widget.onSave(schedule);
                 if (!context.mounted) return;
                 Navigator.pop(context);

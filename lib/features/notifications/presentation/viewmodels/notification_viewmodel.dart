@@ -84,7 +84,6 @@ class NotificationViewModel with ChangeNotifier {
         isRead: true,
         relatedId: notification.relatedId,
       );
-      // Use index as key for now (Hive legacy)
       final index = _notifications.indexOf(notification);
       await _updateUsecase(index, updatedNotification);
       await load();

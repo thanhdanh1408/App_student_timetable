@@ -85,6 +85,56 @@ class ExamViewModel with ChangeNotifier {
     }
   }
 
+  /// Kiểm tra xung đột lịch thi (cùng ngày và giờ)
+  /// Trả về null nếu không có xung đột, hoặc tên môn thi bị trùng
+  String? checkExamConflict(ExamEntity newExam) {
+    if (newExam.examDate == null || newExam.examTime == null) {
+      return null; // Không thể kiểm tra nếu thiếu thông tin
+    }
+
+    // Không kiểm tra với chính nó khi update
+    final otherExams = _exams.where((e) => e.id != newExam.id).toList();
+
+    for (final existing in otherExams) {
+      if (existing.examDate == null || existing.examTime == null) {
+        continue;
+      }
+
+      // Kiểm tra cùng ngày
+      if (existing.examDate!.year == newExam.examDate!.year &&
+          existing.examDate!.month == newExam.examDate!.month &&
+          existing.examDate!.day == newExam.examDate!.day) {
+        
+        // Kiểm tra cùng giờ (hoặc gần nhau trong vòng 2 giờ)
+        final existingMinutes = _parseTimeToMinutes(existing.examTime);
+        final newMinutes = _parseTimeToMinutes(newExam.examTime);
+
+        if (existingMinutes != null && newMinutes != null) {
+          // Cho phép 2 kỳ thi cách nhau ít nhất 2 giờ (120 phút)
+          final timeDiff = (existingMinutes - newMinutes).abs();
+          if (timeDiff < 120) {
+            return existing.subjectName ?? 'Một môn thi khác';
+          }
+        }
+      }
+    }
+    return null; // Không có xung đột
+  }
+
+  /// Parse time string "HH:mm" thành tổng số phút
+  int? _parseTimeToMinutes(String? time) {
+    if (time == null || time.isEmpty) return null;
+    try {
+      final parts = time.split(':');
+      if (parts.length < 2) return null;
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      return hour * 60 + minute;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> _scheduleNotificationForExam(ExamEntity exam) async {
     print('📝 [ENTER] _scheduleNotificationForExam for ${exam.subjectName}, ID: ${exam.id}');
 

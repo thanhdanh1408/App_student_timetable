@@ -1,12 +1,11 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'app.dart';
 import 'core/config/app_routes.dart';
 
-// Supabase
-import 'core/services/supabase_service.dart';
+// Firebase
+import 'core/services/firebase_service.dart';
 
 // Providers
 import 'features/subjects/presentation/viewmodels/subjects_viewmodel.dart';
@@ -51,20 +50,10 @@ import 'core/services/notification_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables
-  await dotenv.load(fileName: '.env');
-
-  // Initialize Supabase
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
-
-  if (supabaseUrl != null && supabaseAnonKey != null) {
-    final supabaseService = SupabaseService();
-    await supabaseService.initialize(supabaseUrl, supabaseAnonKey);
-    print('✅ Supabase initialized');
-  } else {
-    print('⚠️ Supabase credentials not found in .env');
-  }
+  // Initialize Firebase
+  final firebaseService = FirebaseService();
+  await firebaseService.initialize();
+  print('✅ Firebase initialized');
 
   // Khởi tạo NotificationService
   final notificationService = NotificationService();
@@ -75,7 +64,7 @@ void main() async {
   await backgroundTaskHandler.init();
   await backgroundTaskHandler.registerTasks();
 
-  // Khởi tạo Repositories (Supabase only)
+  // Khởi tạo Repositories (Firebase Firestore)
   final subjectsRepo = SubjectsRepositoryImpl();
   final scheduleRepo = ScheduleRepositoryImpl();
   final examRepo = ExamRepositoryImpl();
@@ -103,7 +92,7 @@ void main() async {
   final updateNotificationUsecase = UpdateNotificationUsecase(notificationRepo);
   final deleteNotificationUsecase = DeleteNotificationUsecase(notificationRepo);
 
-  // Persist scheduled notifications to Supabase immediately (with their due time).
+  // Persist scheduled notifications to Firestore immediately (with their due time).
   // This keeps the in-app list consistent even if the Notifications page is never opened.
   notificationService.onNotificationScheduled = (relatedId, title, body, type, scheduledFor) async {
     try {
@@ -119,7 +108,7 @@ void main() async {
         ),
       );
     } catch (e) {
-      print('❌ Error persisting notification to Supabase: $e');
+      print('❌ Error persisting notification to Firestore: $e');
     }
   };
 

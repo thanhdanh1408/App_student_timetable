@@ -9,8 +9,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('App startup test', (WidgetTester tester) async {
-    // TODO: Implement actual tests for the student timetable app
-    // For now, this is a placeholder test
     expect(true, true);
   });
 }

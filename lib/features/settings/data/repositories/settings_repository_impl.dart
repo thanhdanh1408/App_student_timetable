@@ -1,27 +1,31 @@
 // lib/features/settings/data/repositories/settings_repository_impl.dart
-import '/core/services/supabase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '/core/services/firebase_service.dart';
 import '../../domain/entities/user_settings_entity.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 class SettingsRepositoryImpl implements SettingsRepository {
-  final SupabaseService _supabase = SupabaseService();
+  final FirebaseService _firebase = FirebaseService();
+
+  /// Get settings document reference for a user
+  _settingsDoc(String userId) => _firebase.firestore
+      .collection('users')
+      .doc(userId)
+      .collection('settings')
+      .doc('user_settings');
 
   @override
   Future<UserSettingsEntity?> getSettings(String userId) async {
     try {
-      if (!_supabase.isAuthenticated) return null;
+      if (!_firebase.isAuthenticated) return null;
 
-      final response = await _supabase.client
-          .from('user_settings')
-          .select()
-          .eq('user_id', userId)
-          .maybeSingle();
+      final doc = await _settingsDoc(userId).get();
 
-      if (response == null) {
+      if (!doc.exists || doc.data() == null) {
         return _createDefaultSettings(userId);
       }
 
-      return UserSettingsEntity.fromJson(response);
+      return UserSettingsEntity.fromJson(doc.data()!);
     } catch (e) {
       print('❌ Error loading settings: $e');
       return _createDefaultSettings(userId);
@@ -31,15 +35,15 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> saveSettings(UserSettingsEntity settings) async {
     try {
-      if (!_supabase.isAuthenticated) throw Exception('Not authenticated');
+      if (!_firebase.isAuthenticated) throw Exception('Not authenticated');
 
-      // Upsert: insert if not exists, update if exists
-      await _supabase.client.from('user_settings').upsert(
+      // Set with merge to act like upsert
+      await _settingsDoc(settings.userId).set(
         settings.toJson(),
-        onConflict: 'user_id',
+        SetOptions(merge: true),
       );
 
-      print('✅ Settings saved to Supabase');
+      print('✅ Settings saved to Firestore');
     } catch (e) {
       print('❌ Error saving settings: $e');
       rethrow;
@@ -52,6 +56,10 @@ class SettingsRepositoryImpl implements SettingsRepository {
       darkMode: false,
       notifications: true,
       language: 'vi',
+      scheduleReminderMinutes: 15,
+      examReminderMinutes: 60,
+      enableScheduleNotifications: true,
+      enableExamNotifications: true,
     );
   }
 }
