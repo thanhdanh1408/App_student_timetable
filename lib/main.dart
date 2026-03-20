@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' as riverpod;
 import 'app.dart';
 import 'core/config/app_routes.dart';
 
@@ -124,8 +125,9 @@ void main() async {
 
   // 6. Chạy app
   runApp(
-    MultiProvider(
-      providers: [
+    riverpod.ProviderScope(
+      child: MultiProvider(
+        providers: [
         // Auth - use the already-initialized provider
         ChangeNotifierProvider.value(
           value: authProvider,
@@ -223,6 +225,7 @@ void main() async {
         ),
       ],
       child: const AppRoot(),
+      ),
     ),
   );
 }
