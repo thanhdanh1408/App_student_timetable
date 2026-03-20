@@ -147,6 +147,24 @@ class ScheduleCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (schedule.notes != null && schedule.notes!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.note, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      schedule.notes!,
+                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

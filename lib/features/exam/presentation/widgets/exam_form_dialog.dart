@@ -24,6 +24,7 @@ class ExamFormDialog extends StatefulWidget {
 class _ExamFormDialogState extends State<ExamFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _examRoomController = TextEditingController();
+  final _notesController = TextEditingController();
   late SubjectEntity? _selectedSubject;
   String? _examType;
   DateTime? _selectedDate;
@@ -35,6 +36,7 @@ class _ExamFormDialogState extends State<ExamFormDialog> {
     _selectedDate = widget.exam?.examDate;
     _examType = widget.exam?.examName;
     _examRoomController.text = widget.exam?.examRoom ?? '';
+    _notesController.text = widget.exam?.notes ?? '';
     _startTime = widget.exam != null && widget.exam!.examTime != null 
         ? _parseTime(widget.exam!.examTime!) 
         : null;
@@ -67,6 +69,7 @@ class _ExamFormDialogState extends State<ExamFormDialog> {
   @override
   void dispose() {
     _examRoomController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -121,6 +124,16 @@ class _ExamFormDialogState extends State<ExamFormDialog> {
                   labelText: "Phòng thi",
                   border: OutlineInputBorder(),
                 ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _notesController,
+                decoration: const InputDecoration(
+                  labelText: "Ghi chú",
+                  hintText: "Nhập ghi chú (tùy chọn)",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
               ),
               const SizedBox(height: 12),
               GestureDetector(
@@ -185,6 +198,7 @@ class _ExamFormDialogState extends State<ExamFormDialog> {
                   examTime: _formatTime(_startTime),
                   examName: _examType,
                   examRoom: _examRoomController.text.trim().isEmpty ? null : _examRoomController.text.trim(),
+                  notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
                   color: _selectedSubject?.color,
                   isCompleted: false,
                 );

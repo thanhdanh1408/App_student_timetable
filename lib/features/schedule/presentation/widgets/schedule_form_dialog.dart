@@ -20,6 +20,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   final _formKey = GlobalKey<FormState>();
   SubjectEntity? _selectedSubject;
   late TextEditingController _locationCtrl;
+  late TextEditingController _notesCtrl;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
   int? _dayOfWeek;
@@ -30,6 +31,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   void initState() {
     super.initState();
     _locationCtrl = TextEditingController();
+    _notesCtrl = TextEditingController();
 
     // Provide safe defaults; we'll sync actual values in didChangeDependencies.
     _startTime = const TimeOfDay(hour: 7, minute: 30);
@@ -59,6 +61,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
 
       // Location & day
       _locationCtrl.text = schedule.location ?? '';
+      _notesCtrl.text = schedule.notes ?? '';
       _dayOfWeek = schedule.dayOfWeek ?? _dayOfWeek;
 
       // Times
@@ -111,6 +114,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
   @override
   void dispose() {
     _locationCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
@@ -157,6 +161,16 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
               TextFormField(
                 controller: _locationCtrl,
                 decoration: const InputDecoration(labelText: "Địa điểm", border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _notesCtrl,
+                decoration: const InputDecoration(
+                  labelText: "Ghi chú",
+                  hintText: "Nhập ghi chú (tùy chọn)",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
               ),
               const SizedBox(height: 16),
               GestureDetector(
@@ -237,6 +251,7 @@ class _ScheduleFormDialogState extends State<ScheduleFormDialog> {
                   startTime: _formatTime(_startTime),
                   endTime: _formatTime(_endTime),
                   location: _locationCtrl.text.trim(),
+                  notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
                   color: _selectedSubject?.color,
                   isEnabled: true,
                 );

@@ -18,6 +18,8 @@ class ExamEntity {
 
   final String? color;
 
+  final String? notes;
+
   final bool isCompleted;
 
   ExamEntity({
@@ -30,6 +32,7 @@ class ExamEntity {
     this.examName,
     this.examRoom,
     this.color,
+    this.notes,
     this.isCompleted = false,
   });
 
@@ -44,6 +47,7 @@ class ExamEntity {
       examName: json['exam_name'] as String?,
       examRoom: json['exam_room'] as String?,
       color: json['color'] as String?,
+      notes: json['notes'] as String?,
       isCompleted: json['is_completed'] as bool? ?? false,
     );
   }
@@ -58,6 +62,7 @@ class ExamEntity {
     String? examName,
     String? examRoom,
     String? color,
+    String? notes,
     bool? isCompleted,
   }) {
     return ExamEntity(
@@ -70,6 +75,7 @@ class ExamEntity {
       examName: examName ?? this.examName,
       examRoom: examRoom ?? this.examRoom,
       color: color ?? this.color,
+      notes: notes ?? this.notes,
       isCompleted: isCompleted ?? this.isCompleted,
     );
   }

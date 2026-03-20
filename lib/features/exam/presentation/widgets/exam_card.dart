@@ -96,6 +96,20 @@ class ExamCard extends StatelessWidget {
                       "Phòng: ${exam.examRoom}",
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
+                  if (exam.notes != null && exam.notes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        "Ghi chú: ${exam.notes}",
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                 ],
               ),
             ),

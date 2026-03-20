@@ -191,19 +191,32 @@ class ExamViewModel with ChangeNotifier {
     final now = DateTime.now();
     if (notificationTime.isBefore(now.add(const Duration(seconds: 30)))) {
       print('📌 Notification time very close/past, showing immediately!');
+      
+      // Build notification body with time, room, and notes
+      String body = 'Giờ thi: ${exam.examTime}${exam.examRoom != null && exam.examRoom!.isNotEmpty ? " • Phòng: ${exam.examRoom}" : ""}';
+      if (exam.notes != null && exam.notes!.isNotEmpty) {
+        body += '\nGhi chú: ${exam.notes}';
+      }
+      
       await NotificationService().showImmediateNotification(
         id: exam.id!,
         title: '📝 Sắp đến giờ thi: ${exam.subjectName}',
-        body: 'Giờ thi: ${exam.examTime}${exam.examRoom != null && exam.examRoom!.isNotEmpty ? " • Phòng: ${exam.examRoom}" : ""}',
+        body: body,
         payload: 'exam_${exam.id}',
         type: 'exam',
       );
       print('✅ Exam notification shown immediately');
     } else {
+      // Build notification body with time, room, and notes
+      String body = 'Giờ thi: ${exam.examTime}${exam.examRoom != null && exam.examRoom!.isNotEmpty ? " • Phòng: ${exam.examRoom}" : ""}';
+      if (exam.notes != null && exam.notes!.isNotEmpty) {
+        body += '\nGhi chú: ${exam.notes}';
+      }
+      
       await NotificationService().scheduleNotification(
         id: exam.id!,
         title: '📝 Sắp đến giờ thi: ${exam.subjectName}',
-        body: 'Giờ thi: ${exam.examTime}${exam.examRoom != null && exam.examRoom!.isNotEmpty ? " • Phòng: ${exam.examRoom}" : ""}',
+        body: body,
         scheduledTime: notificationTime,
         payload: 'exam_${exam.id}',
         type: 'exam',

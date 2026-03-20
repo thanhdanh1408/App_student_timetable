@@ -179,18 +179,31 @@ class ScheduleViewModel with ChangeNotifier {
 
     if (notificationTime.isBefore(now.add(const Duration(seconds: 30)))) {
       print('📌 Notification time very close/past, showing immediately!');
+      
+      // Build notification body with location, time, and notes
+      String body = 'Phòng ${schedule.location} • ${schedule.startTime}${schedule.endTime != null ? " - ${schedule.endTime}" : ""}';
+      if (schedule.notes != null && schedule.notes!.isNotEmpty) {
+        body += '\nGhi chú: ${schedule.notes}';
+      }
+      
       await NotificationService().showImmediateNotification(
         id: schedule.id!,
         title: '📚 Sắp đến giờ học: ${schedule.subjectName}',
-        body: 'Phòng ${schedule.location} • ${schedule.startTime}${schedule.endTime != null ? " - ${schedule.endTime}" : ""}',
+        body: body,
         payload: 'schedule_${schedule.id}',
         type: 'schedule',
       );
     } else {
+      // Build notification body with location, time, and notes
+      String body = 'Phòng ${schedule.location} • ${schedule.startTime}${schedule.endTime != null ? " - ${schedule.endTime}" : ""}';
+      if (schedule.notes != null && schedule.notes!.isNotEmpty) {
+        body += '\nGhi chú: ${schedule.notes}';
+      }
+      
       await NotificationService().scheduleNotification(
         id: schedule.id!,
         title: '📚 Sắp đến giờ học: ${schedule.subjectName}',
-        body: 'Phòng ${schedule.location} • ${schedule.startTime}${schedule.endTime != null ? " - ${schedule.endTime}" : ""}',
+        body: body,
         scheduledTime: notificationTime,
         payload: 'schedule_${schedule.id}',
         type: 'schedule',

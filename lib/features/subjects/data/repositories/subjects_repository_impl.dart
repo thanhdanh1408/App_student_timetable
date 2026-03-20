@@ -15,6 +15,14 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   CollectionReference<Map<String, dynamic>> get _subjectsCollection =>
       _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('subjects');
 
+  /// Get Firestore collection reference for schedules
+  CollectionReference<Map<String, dynamic>> get _schedulesCollection =>
+      _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('schedules');
+
+  /// Get Firestore collection reference for exams
+  CollectionReference<Map<String, dynamic>> get _examsCollection =>
+      _firebase.firestore.collection('users').doc(_firebase.currentUserId).collection('exams');
+
   @override
   Future<List<SubjectEntity>> getAll() async {
     try {
@@ -97,9 +105,36 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
         throw Exception('Not authenticated');
       }
 
+      print('🔍 [SubjectsRepository] Deleting subject: $id');
+      
+      // Step 1: Find and delete all schedules with this subject_id
+      final schedulesSnapshot = await _schedulesCollection
+          .where('subject_id', isEqualTo: id)
+          .get();
+      
+      print('📋 Found ${schedulesSnapshot.docs.length} schedules to delete');
+      
+      for (final doc in schedulesSnapshot.docs) {
+        await doc.reference.delete();
+        print('✅ Deleted schedule: ${doc.id}');
+      }
+
+      // Step 2: Find and delete all exams with this subject_id
+      final examsSnapshot = await _examsCollection
+          .where('subject_id', isEqualTo: id)
+          .get();
+      
+      print('📝 Found ${examsSnapshot.docs.length} exams to delete');
+      
+      for (final doc in examsSnapshot.docs) {
+        await doc.reference.delete();
+        print('✅ Deleted exam: ${doc.id}');
+      }
+
+      // Step 3: Delete the subject itself
       await _subjectsCollection.doc(id).delete();
 
-      print('✅ Subject deleted from Firestore: ID $id');
+      print('✅ Subject deleted from Firestore: ID $id (including ${schedulesSnapshot.docs.length} schedules and ${examsSnapshot.docs.length} exams)');
     } catch (e) {
       print('❌ Error deleting subject: $e');
       rethrow;

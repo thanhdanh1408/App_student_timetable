@@ -98,6 +98,7 @@ class ExamRepositoryImpl implements ExamRepository {
         'exam_name': exam.examName,
         'exam_room': exam.examRoom,
         'color': exam.color,
+        'notes': exam.notes,
         'is_completed': exam.isCompleted,
       });
 
@@ -128,6 +129,7 @@ class ExamRepositoryImpl implements ExamRepository {
         'exam_name': exam.examName,
         'exam_room': exam.examRoom,
         'color': exam.color,
+        'notes': exam.notes,
         'is_completed': exam.isCompleted,
       });
 

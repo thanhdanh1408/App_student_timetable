@@ -92,6 +92,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
         'end_time': schedule.endTime,
         'location': schedule.location,
         'color': schedule.color,
+        'notes': schedule.notes,
         'is_enabled': schedule.isEnabled,
       });
 
@@ -122,6 +123,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
         'end_time': schedule.endTime,
         'location': schedule.location,
         'color': schedule.color,
+        'notes': schedule.notes,
         'is_enabled': schedule.isEnabled,
       });
 

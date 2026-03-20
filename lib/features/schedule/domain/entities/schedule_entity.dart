@@ -18,6 +18,8 @@ class ScheduleEntity {
 
   final String? color;
 
+  final String? notes;
+
   final bool isEnabled;
 
   ScheduleEntity({
@@ -30,6 +32,7 @@ class ScheduleEntity {
     this.endTime,
     this.location,
     this.color,
+    this.notes,
     this.isEnabled = true,
   });
 
@@ -44,6 +47,7 @@ class ScheduleEntity {
       endTime: json['end_time'] as String?,
       location: json['location'] as String?,
       color: json['color'] as String?,
+      notes: json['notes'] as String?,
       isEnabled: json['is_enabled'] as bool? ?? true,
     );
   }
@@ -58,6 +62,7 @@ class ScheduleEntity {
     String? endTime,
     String? location,
     String? color,
+    String? notes,
     bool? isEnabled,
   }) {
     return ScheduleEntity(
@@ -70,6 +75,7 @@ class ScheduleEntity {
       endTime: endTime ?? this.endTime,
       location: location ?? this.location,
       color: color ?? this.color,
+      notes: notes ?? this.notes,
       isEnabled: isEnabled ?? this.isEnabled,
     );
   }
