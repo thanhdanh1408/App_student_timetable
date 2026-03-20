@@ -1,10 +1,7 @@
 // lib/features/subjects/presentation/widgets/subject_form_dialog.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../domain/entities/subject_entity.dart';
-import '../viewmodels/subjects_viewmodel.dart';
 import '../../../../core/utils/validators.dart';
-import '../../../../core/errors/failure.dart';
 
 class SubjectFormDialog extends StatefulWidget {
   final SubjectEntity? subject;
