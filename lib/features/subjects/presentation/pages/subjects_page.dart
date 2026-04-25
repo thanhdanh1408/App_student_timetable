@@ -1,6 +1,7 @@
 // lib/features/subjects/presentation/pages/subjects_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/widgets/app_drawer.dart';
 import '../providers/subjects_provider.dart';
 import '../widgets/subject_card.dart';
 import '../widgets/subject_form_dialog.dart';
@@ -134,6 +135,7 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
       appBar: AppBar(
         title: const Text('Môn học', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
@@ -142,6 +144,7 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
           ),
         ],
       ),
+      drawer: const AppDrawer(currentRoute: '/subjects'),
       body: subjectsAsyncValue.when(
         // Loading state
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -202,45 +205,67 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
               
               // Subject list or empty state
               Expanded(
-                child: filteredSubjects.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.search_off,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Chưa có môn học nào'
-                                  : 'Không tìm thấy kết quả',
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Nhấn nút + để thêm'
-                                  : 'Thử tìm kiếm với từ khóa khác',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                          ],
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: filteredSubjects.isEmpty
+                      ? Center(
+                          key: const ValueKey('subjects-empty'),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 80,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _searchQuery.isEmpty
+                                    ? 'Chưa có môn học nào'
+                                    : 'Không tìm thấy kết quả',
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _searchQuery.isEmpty
+                                    ? 'Nhấn nút + để thêm'
+                                    : 'Thử tìm kiếm với từ khóa khác',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          key: const ValueKey('subjects-list'),
+                          padding: const EdgeInsets.all(12),
+                          itemCount: filteredSubjects.length,
+                          itemBuilder: (context, index) {
+                            final subject = filteredSubjects[index];
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(milliseconds: 220 + index * 30),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                final offset = 12 * (1 - value);
+                                return Opacity(
+                                  opacity: value,
+                                  child: Transform.translate(
+                                    offset: Offset(0, offset),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: SubjectCard(
+                                subject: subject,
+                                onEdit: () => _showFormDialog(subject: subject),
+                                onDelete: () => _deleteSubject(subject),
+                              ),
+                            );
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: filteredSubjects.length,
-                        itemBuilder: (context, index) {
-                          final subject = filteredSubjects[index];
-                          return SubjectCard(
-                            subject: subject,
-                            onEdit: () => _showFormDialog(subject: subject),
-                            onDelete: () => _deleteSubject(subject),
-                          );
-                        },
-                      ),
+                ),
               ),
             ],
           );

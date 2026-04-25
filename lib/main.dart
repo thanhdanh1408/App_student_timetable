@@ -16,6 +16,8 @@ import 'features/home/presentation/viewmodels/home_viewmodel.dart';
 import 'features/notifications/presentation/viewmodels/notification_viewmodel.dart';
 import 'features/notifications/domain/entities/notification_entity.dart';
 import 'features/settings/presentation/viewmodels/settings_viewmodel.dart';
+import 'features/grades/presentation/viewmodels/grades_viewmodel.dart';
+import 'features/tasks/presentation/viewmodels/tasks_viewmodel.dart';
 import 'core/providers/notification_settings_provider.dart';
 import 'core/providers/auth_provider.dart';
 
@@ -25,6 +27,8 @@ import 'features/schedule/data/repositories/schedule_repository_impl.dart';
 import 'features/exam/data/repositories/exam_repository_impl.dart';
 import 'features/notifications/data/repositories/notification_repository_impl.dart';
 import 'features/settings/data/repositories/settings_repository_impl.dart';
+import 'features/grades/data/repositories/grades_repository_impl.dart';
+import 'features/tasks/data/repositories/tasks_repository_impl.dart';
 
 // Usecases
 import 'features/subjects/domain/usecases/get_subjects_usecase.dart';
@@ -45,6 +49,14 @@ import 'features/notifications/domain/usecases/update_notification_usecase.dart'
 import 'features/notifications/domain/usecases/delete_notification_usecase.dart';
 import 'features/settings/domain/usecases/get_settings_usecase.dart';
 import 'features/settings/domain/usecases/save_settings_usecase.dart';
+import 'features/grades/domain/usecases/get_grades_usecase.dart';
+import 'features/grades/domain/usecases/add_grade_usecase.dart';
+import 'features/grades/domain/usecases/update_grade_usecase.dart';
+import 'features/grades/domain/usecases/delete_grade_usecase.dart';
+import 'features/tasks/domain/usecases/get_tasks_usecase.dart';
+import 'features/tasks/domain/usecases/add_task_usecase.dart';
+import 'features/tasks/domain/usecases/update_task_usecase.dart';
+import 'features/tasks/domain/usecases/delete_task_usecase.dart';
 import 'core/services/background_task_handler.dart';
 import 'core/services/notification_service.dart';
 
@@ -71,6 +83,8 @@ void main() async {
   final examRepo = ExamRepositoryImpl();
   final notificationRepo = NotificationRepositoryImpl();
   final settingsRepo = SettingsRepositoryImpl();
+  final gradesRepo = GradesRepositoryImpl();
+  final tasksRepo = TasksRepositoryImpl();
 
   // 3. Khởi tạo Usecases
   final getSubjectsUsecase = GetSubjectsUsecase(subjectsRepo);
@@ -115,6 +129,15 @@ void main() async {
 
   final getSettingsUsecase = GetSettingsUsecase(settingsRepo);
   final saveSettingsUsecase = SaveSettingsUsecase(settingsRepo);
+  final getGradesUsecase = GetGradesUsecase(gradesRepo);
+  final addGradeUsecase = AddGradeUsecase(gradesRepo);
+  final updateGradeUsecase = UpdateGradeUsecase(gradesRepo);
+  final deleteGradeUsecase = DeleteGradeUsecase(gradesRepo);
+
+  final getTasksUsecase = GetTasksUsecase(tasksRepo);
+  final addTaskUsecase = AddTaskUsecase(tasksRepo);
+  final updateTaskUsecase = UpdateTaskUsecase(tasksRepo);
+  final deleteTaskUsecase = DeleteTaskUsecase(tasksRepo);
 
   // 4. Create AuthProvider first
   final authProvider = AuthProvider();
@@ -205,6 +228,26 @@ void main() async {
             get: getSettingsUsecase,
             save: saveSettingsUsecase,
           ),
+        ),
+
+        // Grades (Sprint 2)
+        ChangeNotifierProvider(
+          create: (_) => GradesViewModel(
+            get: getGradesUsecase,
+            add: addGradeUsecase,
+            update: updateGradeUsecase,
+            delete: deleteGradeUsecase,
+          )..load(),
+        ),
+
+        // Tasks/Assignments (Sprint 2)
+        ChangeNotifierProvider(
+          create: (_) => TasksViewModel(
+            get: getTasksUsecase,
+            add: addTaskUsecase,
+            update: updateTaskUsecase,
+            delete: deleteTaskUsecase,
+          )..load(),
         ),
 
         // Home - tạo với đầy đủ các provider khác

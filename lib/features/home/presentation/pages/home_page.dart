@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/core/providers/auth_provider.dart';
+import '/core/widgets/app_drawer.dart';
 import '../../../subjects/presentation/viewmodels/subjects_viewmodel.dart';
 import '../../../schedule/presentation/viewmodels/schedule_viewmodel.dart';
 import '../../../exam/presentation/viewmodels/exam_viewmodel.dart';
@@ -52,6 +53,7 @@ class _HomePageState extends State<HomePage> {
           appBar: AppBar(
             title: const Text("Trang chủ", style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white),
@@ -59,6 +61,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
+          drawer: const AppDrawer(currentRoute: '/home'),
           body: RefreshIndicator(
                   onRefresh: () async {
                     final subjectsViewModel = context.read<SubjectsViewModel>();

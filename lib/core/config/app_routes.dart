@@ -13,43 +13,18 @@ import '/features/exam/presentation/pages/exam_page.dart';
 import '/features/settings/presentation/pages/settings_page.dart';
 import '/features/notifications/presentation/pages/notification_page.dart';
 import '/features/splash/presentation/pages/permission_check_page.dart';
+import '/features/grades/presentation/pages/grades_page.dart';
+import '/features/tasks/presentation/pages/tasks_page.dart';
 
 class _BottomNavShell extends StatelessWidget {
   final Widget child;
   const _BottomNavShell({required this.child});
 
-  int _getIndex(BuildContext context) {
-    final path = GoRouterState.of(context).uri.path;
-    if (path.startsWith('/subjects')) return 1;
-    if (path.startsWith('/schedule')) return 2;
-    if (path.startsWith('/exam')) return 3;
-    if (path.startsWith('/notification')) return 4;
-    if (path.startsWith('/settings')) return 5;
-    return 0;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<auth.AuthProvider>(
       builder: (context, authProvider, _) {
-        return Scaffold(
-          body: child,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _getIndex(context),
-            onDestinationSelected: (index) {
-              const paths = ['/home', '/subjects', '/schedule', '/exam', '/notification', '/settings'];
-              context.go(paths[index]);
-            },
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Trang chủ'),
-              NavigationDestination(icon: Icon(Icons.book_outlined), selectedIcon: Icon(Icons.book), label: 'Môn học'),
-              NavigationDestination(icon: Icon(Icons.calendar_today_outlined), selectedIcon: Icon(Icons.calendar_today), label: 'Lịch học'),
-              NavigationDestination(icon: Icon(Icons.assignment_outlined), selectedIcon: Icon(Icons.assignment), label: 'Lịch thi'),
-              NavigationDestination(icon: Icon(Icons.notifications_outlined), selectedIcon: Icon(Icons.notifications), label: 'Thông báo'),
-              NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Cài đặt'),
-            ],
-          ),
-        );
+        return child;
       },
     );
   }
@@ -91,6 +66,8 @@ GoRouter _createAppRouter(auth.AuthProvider authProvider) {
           GoRoute(path: '/exam', builder: (_, __) => const ExamPage()),
           GoRoute(path: '/notification', builder: (_, __) => const NotificationPage()),
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
+          GoRoute(path: '/grades', builder: (_, __) => const GradesPage()),
+          GoRoute(path: '/tasks', builder: (_, __) => const TasksPage()),
         ],
       ),
     ],

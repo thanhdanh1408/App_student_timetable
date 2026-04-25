@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '/core/providers/auth_provider.dart';
 import '/core/services/notification_service.dart';
+import '/core/widgets/app_drawer.dart';
 import '../widgets/notification_settings_card.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -17,7 +18,9 @@ class SettingsPage extends StatelessWidget {
           appBar: AppBar(
             title: const Text("Cài đặt", style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
           ),
+          drawer: const AppDrawer(currentRoute: '/settings'),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(

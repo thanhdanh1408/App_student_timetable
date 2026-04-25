@@ -1,6 +1,7 @@
 // lib/features/exam/presentation/pages/exam_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/widgets/app_drawer.dart';
 import '../../domain/entities/exam_entity.dart';
 import '../widgets/exam_card.dart';
 import '../widgets/exam_form_dialog.dart';
@@ -117,6 +118,7 @@ class _ExamPageState extends ConsumerState<ExamPage> {
       appBar: AppBar(
         title: const Text("Lịch thi", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
@@ -124,6 +126,7 @@ class _ExamPageState extends ConsumerState<ExamPage> {
           ),
         ],
       ),
+      drawer: const AppDrawer(currentRoute: '/exam'),
       body: examsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
@@ -224,37 +227,59 @@ class _ExamPageState extends ConsumerState<ExamPage> {
               ),
               // List
               Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.event_busy,
-                                size: 80, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            const Text("Chưa có lịch thi nào",
-                                style: TextStyle(fontSize: 20)),
-                            const SizedBox(height: 8),
-                            const Text("Nhấn + để thêm",
-                                style: TextStyle(color: Colors.grey)),
-                          ],
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: filtered.isEmpty
+                      ? Center(
+                          key: const ValueKey('exam-empty'),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.event_busy,
+                                  size: 80, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              const Text("Chưa có lịch thi nào",
+                                  style: TextStyle(fontSize: 20)),
+                              const SizedBox(height: 8),
+                              const Text("Nhấn + để thêm",
+                                  style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          key: const ValueKey('exam-list'),
+                          padding: const EdgeInsets.all(12),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final exam = filtered[index];
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(milliseconds: 220 + index * 30),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                final offset = 12 * (1 - value);
+                                return Opacity(
+                                  opacity: value,
+                                  child: Transform.translate(
+                                    offset: Offset(0, offset),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: ExamCard(
+                                exam: exam,
+                                onEdit: () => _showFormDialog(exam: exam),
+                                onDelete: () => _showDeleteConfirmation(
+                                  exam.id ?? "",
+                                  exam.subjectName ?? "Lịch thi",
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final exam = filtered[index];
-                          return ExamCard(
-                            exam: exam,
-                            onEdit: () => _showFormDialog(exam: exam),
-                            onDelete: () => _showDeleteConfirmation(
-                              exam.id ?? "",
-                              exam.subjectName ?? "Lịch thi",
-                            ),
-                          );
-                        },
-                      ),
+                ),
               )
             ],
           );

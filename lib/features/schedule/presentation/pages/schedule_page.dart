@@ -1,6 +1,7 @@
 // lib/features/schedule/presentation/pages/schedule_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/widgets/app_drawer.dart';
 import '../widgets/schedule_card.dart';
 import '../widgets/schedule_form_dialog.dart';
 import '../providers/schedule_provider.dart';
@@ -119,6 +120,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
       appBar: AppBar(
         title: const Text("Lịch học", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
@@ -126,6 +128,7 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
           ),
         ],
       ),
+      drawer: const AppDrawer(currentRoute: '/schedule'),
       body: schedulesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(
@@ -224,36 +227,58 @@ class _SchedulePageState extends ConsumerState<SchedulePage> {
               ),
               // List
               Expanded(
-                child: filtered.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.event_busy,
-                                size: 80, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            const Text("Chưa có lịch học",
-                                style: TextStyle(fontSize: 20)),
-                            const SizedBox(height: 8),
-                            const Text("Nhấn nút + để thêm buổi học",
-                                style: TextStyle(color: Colors.grey)),
-                          ],
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: filtered.isEmpty
+                      ? Center(
+                          key: const ValueKey('schedule-empty'),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.event_busy,
+                                  size: 80, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              const Text("Chưa có lịch học",
+                                  style: TextStyle(fontSize: 20)),
+                              const SizedBox(height: 8),
+                              const Text("Nhấn nút + để thêm buổi học",
+                                  style: TextStyle(color: Colors.grey)),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          key: const ValueKey('schedule-list'),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final schedule = filtered[index];
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(milliseconds: 220 + index * 30),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                final offset = 12 * (1 - value);
+                                return Opacity(
+                                  opacity: value,
+                                  child: Transform.translate(
+                                    offset: Offset(0, offset),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: ScheduleCard(
+                                schedule: schedule,
+                                onEdit: () => _showFormDialog(schedule: schedule),
+                                onDelete: () => _showDeleteConfirmation(
+                                  schedule.id ?? "",
+                                  schedule.subjectName ?? "Môn học",
+                                ),
+                              ),
+                            );
+                          },
                         ),
-                      )
-                    : ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final schedule = filtered[index];
-                          return ScheduleCard(
-                            schedule: schedule,
-                            onEdit: () => _showFormDialog(schedule: schedule),
-                            onDelete: () => _showDeleteConfirmation(
-                              schedule.id ?? "",
-                              schedule.subjectName ?? "Môn học",
-                            ),
-                          );
-                        },
-                      ),
+                ),
               )
             ],
           );

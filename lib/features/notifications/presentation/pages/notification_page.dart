@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '/core/widgets/app_drawer.dart';
 import '/features/notifications/presentation/viewmodels/notification_viewmodel.dart';
 import '../../domain/entities/notification_entity.dart';
 
@@ -41,6 +42,7 @@ class _NotificationPageState extends State<NotificationPage>
       appBar: AppBar(
         title: const Text('Thông báo', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
+        iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.white,
@@ -53,6 +55,7 @@ class _NotificationPageState extends State<NotificationPage>
           ],
         ),
       ),
+      drawer: const AppDrawer(currentRoute: '/notification'),
       body: notifications.isEmpty
           ? _buildEmptyState()
           : TabBarView(
