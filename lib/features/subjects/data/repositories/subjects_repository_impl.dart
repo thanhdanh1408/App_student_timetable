@@ -57,12 +57,14 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
       print('📝 [SubjectsRepository] Attempting to add subject: ${subject.subjectName}');
       print('📝 [SubjectsRepository] User authenticated: ${_firebase.currentUserId}');
 
+      final now = DateTime.now().toIso8601String();
       final docRef = await _subjectsCollection.add({
-        'user_id': _firebase.currentUserId!,
         'subject_name': subject.subjectName,
-        'teacher_name': subject.teacherName,
+        'teacher_name': subject.teacherName ?? '',
+        'credit': subject.credit ?? 1,
         'color': subject.color,
-        'credit': subject.credit,
+        'created_at': now,
+        'updated_at': now,
       });
 
       print('✅ Subject added to Firestore: ${subject.subjectName}');
@@ -84,11 +86,13 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
         throw Exception('Subject ID cannot be null');
       }
 
+      final now = DateTime.now().toIso8601String();
       await _subjectsCollection.doc(subject.id!).update({
         'subject_name': subject.subjectName,
-        'teacher_name': subject.teacherName,
+        'teacher_name': subject.teacherName ?? '',
+        'credit': subject.credit ?? 1,
         'color': subject.color,
-        'credit': subject.credit,
+        'updated_at': now,
       });
 
       print('✅ Subject updated in Firestore: ${subject.subjectName}');

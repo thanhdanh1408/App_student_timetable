@@ -137,7 +137,7 @@ void main() {
           location: 'Room B101',
         );
         when(mockRepository.update(tSchedule))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await updateScheduleUsecase.call(tSchedule);
@@ -156,7 +156,7 @@ void main() {
         
         const tScheduleId = '1';
         when(mockRepository.delete(tScheduleId))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await deleteScheduleUsecase.call(tScheduleId);

@@ -122,6 +122,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     }
   }
 
+  @override
   Future<void> deleteById(String id) async {
     try {
       if (!_firebase.isAuthenticated) throw Exception('Not authenticated');

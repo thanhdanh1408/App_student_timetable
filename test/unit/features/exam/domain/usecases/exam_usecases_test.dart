@@ -137,7 +137,7 @@ void main() {
           examRoom: 'Room B101',
         );
         when(mockRepository.update(tExam))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await updateExamUsecase.call(tExam);
@@ -156,7 +156,7 @@ void main() {
         
         const tExamId = '1';
         when(mockRepository.delete(tExamId))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await deleteExamUsecase.call(tExamId);

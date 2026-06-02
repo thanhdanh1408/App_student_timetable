@@ -21,7 +21,7 @@ class SubjectEntity {
   factory SubjectEntity.fromJson(Map<String, dynamic> json) {
     return SubjectEntity(
       id: json['subject_id'] as String?,
-      subjectName: json['subject_name'] as String,
+      subjectName: json['subject_name'] as String? ?? '',
       teacherName: json['teacher_name'] as String?,
       color: json['color'] as String?,
       credit: json['credit'] as int?,

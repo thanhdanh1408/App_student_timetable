@@ -20,23 +20,21 @@ class GradeEntity {
   });
 
   double get score4 {
-    if (score10 >= 8.5) return 4.0;
+    if (score10 >= 9.0) return 4.0;
     if (score10 >= 8.0) return 3.5;
     if (score10 >= 7.0) return 3.0;
-    if (score10 >= 6.5) return 2.5;
-    if (score10 >= 5.5) return 2.0;
-    if (score10 >= 5.0) return 1.5;
-    if (score10 >= 4.0) return 1.0;
+    if (score10 >= 6.0) return 2.5;
+    if (score10 >= 5.0) return 2.0;
+    if (score10 >= 4.0) return 1.5;
     return 0.0;
   }
 
   String get letterGrade {
-    if (score10 >= 8.5) return 'A';
-    if (score10 >= 8.0) return 'B+';
-    if (score10 >= 7.0) return 'B';
-    if (score10 >= 6.5) return 'C+';
-    if (score10 >= 5.5) return 'C';
-    if (score10 >= 5.0) return 'D+';
+    if (score10 >= 9.0) return 'A+';
+    if (score10 >= 8.0) return 'A';
+    if (score10 >= 7.0) return 'B+';
+    if (score10 >= 6.0) return 'B';
+    if (score10 >= 5.0) return 'C';
     if (score10 >= 4.0) return 'D';
     return 'F';
   }

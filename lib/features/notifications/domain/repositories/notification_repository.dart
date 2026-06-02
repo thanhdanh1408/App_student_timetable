@@ -6,4 +6,5 @@ abstract class NotificationRepository {
   Future<void> add(NotificationEntity notification);
   Future<void> update(int key, NotificationEntity notification);
   Future<void> delete(int key);
+  Future<void> deleteById(String id);
 }

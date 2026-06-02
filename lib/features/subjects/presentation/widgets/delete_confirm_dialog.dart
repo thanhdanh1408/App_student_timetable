@@ -1,5 +1,6 @@
 // lib/features/subjects/presentation/widgets/delete_confirm_dialog.dart
 import 'package:flutter/material.dart';
+import '/core/l10n/app_localizations.dart';
 
 class DeleteConfirmDialog extends StatelessWidget {
   final String subjectName;
@@ -13,15 +14,16 @@ class DeleteConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       icon: const Icon(Icons.warning_amber_rounded, size: 48, color: Colors.red),
-      title: const Text("Xác nhận xóa", style: TextStyle(fontWeight: FontWeight.bold)),
-      content: Text("Bạn có chắc muốn xóa môn học:\n\n\"$subjectName\"?\n\nHành động này không thể hoàn tác!"),
+      title: Text(l.isVietnamese ? "Xác nhận xóa" : "Confirm delete", style: const TextStyle(fontWeight: FontWeight.bold)),
+      content: Text(l.isVietnamese ? "Bạn có chắc muốn xóa môn học:\n\n\"$subjectName\"?\n\nHành động này không thể hoàn tác!" : "Are you sure you want to delete the subject:\n\n\"$subjectName\"?\n\nThis action cannot be undone!"),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -29,7 +31,7 @@ class DeleteConfirmDialog extends StatelessWidget {
             Navigator.pop(context);
             onConfirm();
           },
-          child: const Text("Xóa", style: TextStyle(color: Colors.white)),
+          child: Text(l.delete, style: const TextStyle(color: Colors.white)),
         ),
       ],
     );

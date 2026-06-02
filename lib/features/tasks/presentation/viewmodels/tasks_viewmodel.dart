@@ -35,7 +35,7 @@ class TasksViewModel with ChangeNotifier {
   List<TaskEntity> get completedTasks => _tasks.where((t) => t.isCompleted).toList();
 
   Future<void> load() async {
-    _isLoading = true;
+    _isLoading = _tasks.isEmpty;
     _error = null;
     notifyListeners();
 
@@ -79,7 +79,22 @@ class TasksViewModel with ChangeNotifier {
 
   Future<void> toggleCompleted(TaskEntity task, bool value) async {
     final status = value ? 'Done' : 'Todo';
-    await update(task.copyWith(isCompleted: value, status: status));
+    final updatedTask = task.copyWith(isCompleted: value, status: status);
+    
+    final index = _tasks.indexWhere((t) => t.id == task.id);
+    if (index != -1) {
+      _tasks[index] = updatedTask;
+      notifyListeners();
+    }
+    
+    try {
+      await update(updatedTask);
+    } catch (e) {
+      if (index != -1) {
+        _tasks[index] = task;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> delete(String id) async {
@@ -103,6 +118,13 @@ class TasksViewModel with ChangeNotifier {
     final now = DateTime.now();
 
     if (reminderTime.isBefore(now.add(const Duration(seconds: 30)))) {
+      await NotificationService().showImmediateNotification(
+        id: task.id!,
+        title: '⏰ Sắp tới deadline',
+        body: '${task.title}${task.notes != null && task.notes!.isNotEmpty ? '\nGhi chú: ${task.notes}' : ''}',
+        payload: 'task_${task.id}',
+        type: 'general',
+      );
       return;
     }
 

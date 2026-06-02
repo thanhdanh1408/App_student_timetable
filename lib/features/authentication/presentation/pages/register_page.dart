@@ -30,7 +30,7 @@ class _RegisterPageState extends State<RegisterPage> {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         return Scaffold(
-          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SingleChildScrollView(
             child: SizedBox(
               height: MediaQuery.of(context).size.height,
@@ -39,9 +39,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       "Đăng ký",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0)),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                     ),
                     const SizedBox(height: 30),
                     if (auth.error != null) ...[
@@ -53,7 +53,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ],
                     TextField(
                       controller: _fullnameCtrl,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Họ và tên",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -67,7 +67,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: _emailCtrl,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Email",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -82,7 +82,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextField(
                       controller: _passCtrl,
                       obscureText: true,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Mật khẩu",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -97,7 +97,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     TextField(
                       controller: _confirmPassCtrl,
                       obscureText: true,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Nhập lại mật khẩu",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -112,7 +112,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                        style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
                         onPressed: auth.isLoading
                             ? null
                             : () async {
@@ -137,9 +137,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 16),
                     GestureDetector(
                       onTap: () => context.go('/login'),
-                      child: const Text(
+                      child: Text(
                         "Đã có tài khoản? Đăng nhập",
-                        style: TextStyle(color: Colors.black),
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],

@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/subject_entity.dart';
 import 'delete_confirm_dialog.dart';
+import '/core/l10n/app_localizations.dart';
 
 class SubjectCard extends StatelessWidget {
   final SubjectEntity subject;
@@ -26,6 +27,8 @@ class SubjectCard extends StatelessWidget {
         subjectColor = Colors.blue;
       }
     }
+    
+    final l = AppLocalizations.of(context);
 
     return Card(
       elevation: 4,
@@ -70,7 +73,7 @@ class SubjectCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.credit_card, size: 16, color: Colors.grey),
                   const SizedBox(width: 4),
-                  Text("${subject.credit} tín chỉ"),
+                  Text(l.isVietnamese ? "${subject.credit} tín chỉ" : "${subject.credit} credits"),
                 ],
               ),
             ],

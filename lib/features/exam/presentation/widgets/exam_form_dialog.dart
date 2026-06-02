@@ -1,6 +1,8 @@
 // lib/features/exam/presentation/widgets/exam_form_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/l10n/app_localizations.dart';
+import '../../../../core/utils/validators.dart';
 import '../../domain/entities/exam_entity.dart';
 import '../../../subjects/domain/entities/subject_entity.dart';
 import '../../../subjects/presentation/providers/subjects_provider.dart';
@@ -8,11 +10,13 @@ import '../../../subjects/presentation/providers/subjects_provider.dart';
 class ExamFormDialog extends ConsumerStatefulWidget {
   final ExamEntity? exam;
   final Function(ExamEntity) onSave;
+  final List<ExamEntity> existingExams;
 
   const ExamFormDialog({
     super.key,
     this.exam,
     required this.onSave,
+    this.existingExams = const [],
   });
 
   @override
@@ -44,9 +48,26 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final subjects = ref.watch(subjectsListProvider).maybeWhen(
+    final l = AppLocalizations.of(context);
+    
+    if (_examType != null) {
+      final validValues = [l.finalExam, l.midtermExam, l.regularExam];
+      if (!validValues.contains(_examType)) {
+        if (_examType == 'Giữa kỳ' || _examType == 'Midterm') {
+          _examType = l.midtermExam;
+        } else if (_examType == 'Cuối kỳ' || _examType == 'Final') {
+          _examType = l.finalExam;
+        } else if (_examType == 'Thường xuyên' || _examType == 'Regular') {
+          _examType = l.regularExam;
+        } else {
+          _examType = null;
+        }
+      }
+    }
+
+    final List<SubjectEntity> subjects = ref.watch(subjectsListProvider).maybeWhen(
       data: (data) => data,
-      orElse: () => [],
+      orElse: () => <SubjectEntity>[],
     );
 
     if (widget.exam != null && subjects.isNotEmpty) {
@@ -69,10 +90,14 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
   }
 
   String _formatTime(TimeOfDay? time) =>
-      time == null ? "Chưa chọn" : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      time == null
+        ? (AppLocalizations.of(context).isVietnamese ? 'Chưa chọn' : 'Not selected')
+        : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
 
   String _formatDate(DateTime? date) =>
-      date == null ? "Chưa chọn" : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      date == null
+        ? (AppLocalizations.of(context).isVietnamese ? 'Chưa chọn' : 'Not selected')
+        : '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 
   @override
   void dispose() {
@@ -81,16 +106,48 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
     super.dispose();
   }
 
+  /// Check for exam conflicts within 60 minutes on the same date
+  String? _checkExamConflict() {
+    if (_selectedDate == null || _startTime == null) return null;
+
+    final newExamMinutes = _startTime!.hour * 60 + _startTime!.minute;
+
+    for (final existing in widget.existingExams) {
+      // Skip self when editing
+      if (widget.exam != null && existing.id == widget.exam!.id) continue;
+      // Only check same date
+      if (existing.examDate == null) continue;
+      if (existing.examDate!.year != _selectedDate!.year ||
+          existing.examDate!.month != _selectedDate!.month ||
+          existing.examDate!.day != _selectedDate!.day) {
+        continue;
+      }
+
+      // Parse existing exam time
+      if (existing.examTime == null || !existing.examTime!.contains(':')) continue;
+      final existingTime = _parseTime(existing.examTime!);
+      final existingMinutes = existingTime.hour * 60 + existingTime.minute;
+
+      final gap = (newExamMinutes - existingMinutes).abs();
+      if (gap < 60) {
+        return '⚠️ Trùng lịch thi với "${existing.subjectName ?? "Môn khác"}" '
+            'lúc ${_formatTime(existingTime)} (cách nhau chỉ $gap phút, tối thiểu 60 phút)';
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final subjectsAsync = ref.watch(subjectsListProvider);
-    final subjects = subjectsAsync.maybeWhen(
+    final List<SubjectEntity> subjects = subjectsAsync.maybeWhen(
       data: (data) => data,
-      orElse: () => [],
+      orElse: () => <SubjectEntity>[],
     );
 
     return AlertDialog(
-      title: Text(widget.exam == null ? "Thêm lịch thi" : "Sửa lịch thi"),
+      title: Text(widget.exam == null ? l.addExamTitle : l.editExamTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -106,7 +163,7 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  "Lỗi tải danh sách môn học",
+                  l.loadSubjectsFailed,
                   style: TextStyle(color: Colors.red[600]),
                 ),
               )
@@ -118,10 +175,10 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                   children: [
                     DropdownButtonFormField<SubjectEntity>(
                       value: _selectedSubject,
-                      decoration: const InputDecoration(
-                        labelText: "Môn thi*",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.book),
+                      decoration: InputDecoration(
+                        labelText: l.selectSubject,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.book),
                       ),
                       items: subjects
                           .map<DropdownMenuItem<SubjectEntity>>((subject) =>
@@ -133,47 +190,63 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                       onChanged: (SubjectEntity? value) {
                         setState(() => _selectedSubject = value);
                       },
-                      validator: (value) => value == null ? "Vui lòng chọn môn thi" : null,
+                      validator: (value) => value == null ? l.selectSubjectError : null,
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       value: _examType,
-                      decoration: const InputDecoration(
-                        labelText: "Tên kỳ thi*",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_today),
+                      decoration: InputDecoration(
+                        labelText: l.selectExamTime,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.calendar_today),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: "Cuối kỳ", child: Text("Cuối kỳ")),
-                        DropdownMenuItem(value: "Giữa kỳ", child: Text("Giữa kỳ")),
-                        DropdownMenuItem(value: "Thường xuyên", child: Text("Thường xuyên")),
+                      items: [
+                        DropdownMenuItem(value: l.finalExam, child: Text(l.finalExam)),
+                        DropdownMenuItem(value: l.midtermExam, child: Text(l.midtermExam)),
+                        DropdownMenuItem(value: l.regularExam, child: Text(l.regularExam)),
                       ],
                       onChanged: (String? value) {
                         setState(() => _examType = value);
                       },
-                      validator: (value) => value == null ? "Vui lòng chọn kỳ thi" : null,
+                      validator: (value) => value == null ? l.selectExamTime : null,
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _examRoomController,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        labelText: "Phòng thi",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
+                      decoration: InputDecoration(
+                        labelText: l.examRoom,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.location_on),
                       ),
+                      validator: (value) {
+                        final result = FormValidator.validateOptionalLength(value ?? '', 'Exam room', 80);
+                        return result.isFailure()
+                            ? (l.isVietnamese
+                                ? 'Phòng thi tối đa 80 ký tự'
+                                : 'Room can be up to 80 characters')
+                            : null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _notesController,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        labelText: "Ghi chú",
-                        hintText: "Nhập ghi chú (tùy chọn)",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.note),
+                      decoration: InputDecoration(
+                        labelText: l.notes,
+                        hintText: l.notesHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.note),
                       ),
                       maxLines: 3,
+                      validator: (value) {
+                        final result = FormValidator.validateOptionalLength(value ?? '', 'Notes', 1000);
+                        return result.isFailure()
+                            ? (l.isVietnamese
+                                ? 'Ghi chú tối đa 1000 ký tự'
+                                : 'Notes can be up to 1000 characters')
+                            : null;
+                      },
                     ),
                     const SizedBox(height: 12),
                     GestureDetector(
@@ -189,10 +262,10 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                         }
                       },
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: "Ngày thi*",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.event),
+                        decoration: InputDecoration(
+                          labelText: l.examDate,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.event),
                         ),
                         child: Text(_formatDate(_selectedDate)),
                       ),
@@ -209,10 +282,10 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                         }
                       },
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: "Giờ bắt đầu*",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.schedule),
+                        decoration: InputDecoration(
+                          labelText: l.examTime,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.schedule),
                         ),
                         child: Text(_formatTime(_startTime)),
                       ),
@@ -226,7 +299,7 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text("Hủy", style: TextStyle(color: Colors.black)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -237,6 +310,19 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
               ? null
               : () async {
                   if (_formKey.currentState!.validate() && _selectedDate != null && _startTime != null) {
+                    // Check for exam conflicts (60-minute gap)
+                    final conflict = _checkExamConflict();
+                    if (conflict != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(conflict),
+                          backgroundColor: Colors.orange,
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                      return;
+                    }
+
                     setState(() => _isLoading = true);
                     try {
                       final exam = ExamEntity(
@@ -258,14 +344,14 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                       );
 
                       await widget.onSave(exam);
-                      if (!mounted) return;
+                      if (!context.mounted) return;
                       Navigator.pop(context);
                     } catch (e) {
+                      if (!context.mounted) return;
                       setState(() => _isLoading = false);
-                      if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text("❌ Lỗi: ${e.toString()}"),
+                          content: Text('❌ ${l.errorOccurred}: ${e.toString()}'),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -282,7 +368,7 @@ class _ExamFormDialogState extends ConsumerState<ExamFormDialog> {
                   ),
                 )
               : Text(
-                  widget.exam == null ? "Thêm" : "Lưu",
+                  widget.exam == null ? l.add : l.save,
                   style: const TextStyle(color: Colors.white),
                 ),
         ),

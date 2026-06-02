@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '/core/l10n/app_localizations.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -30,6 +31,8 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+
     return Drawer(
       child: SafeArea(
         child: ListView(
@@ -38,21 +41,22 @@ class AppDrawer extends StatelessWidget {
             Container(
               color: Colors.black,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: const Text(
-                'Student Timetable',
+              child: Text(
+                l.appTitle,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-            _item(context: context, icon: Icons.home, label: 'Trang chủ', path: '/home'),
-            _item(context: context, icon: Icons.book, label: 'Môn học', path: '/subjects'),
-            _item(context: context, icon: Icons.calendar_today, label: 'Lịch học', path: '/schedule'),
-            _item(context: context, icon: Icons.assignment, label: 'Lịch thi', path: '/exam'),
-            _item(context: context, icon: Icons.notifications, label: 'Thông báo', path: '/notification'),
-            _item(context: context, icon: Icons.school, label: 'Quản lý điểm', path: '/grades'),
-            _item(context: context, icon: Icons.checklist, label: 'To-do', path: '/tasks'),
+            _item(context: context, icon: Icons.home, label: l.home, path: '/home'),
+            _item(context: context, icon: Icons.book, label: l.subjects, path: '/subjects'),
+            _item(context: context, icon: Icons.calendar_today, label: l.schedule, path: '/schedule'),
+            _item(context: context, icon: Icons.assignment, label: l.exam, path: '/exam'),
+            _item(context: context, icon: Icons.notifications, label: l.notifications, path: '/notification'),
+            _item(context: context, icon: Icons.school, label: l.grades, path: '/grades'),
+            _item(context: context, icon: Icons.checklist, label: l.tasks, path: '/tasks'),
+            _item(context: context, icon: Icons.notes, label: l.notes, path: '/notes'),
             const Divider(height: 1),
-            _item(context: context, icon: Icons.settings, label: 'Cài đặt', path: '/settings'),
+            _item(context: context, icon: Icons.settings, label: l.settings, path: '/settings'),
           ],
         ),
       ),

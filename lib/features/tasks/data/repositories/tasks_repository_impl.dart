@@ -79,6 +79,7 @@ class TasksRepositoryImpl implements TasksRepository {
       'due_date': task.dueDate?.toIso8601String(),
       'is_completed': task.isCompleted,
       'notes': task.notes,
+      'updated_at': DateTime.now().toIso8601String(),
     });
   }
 

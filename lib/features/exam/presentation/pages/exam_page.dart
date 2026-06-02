@@ -1,7 +1,11 @@
 // lib/features/exam/presentation/pages/exam_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/l10n/app_localizations.dart';
 import '/core/widgets/app_drawer.dart';
+import '/core/widgets/shimmer_loading.dart';
+import '/core/widgets/empty_state_widget.dart';
+import '/core/widgets/error_state_widget.dart';
 import '../../domain/entities/exam_entity.dart';
 import '../widgets/exam_card.dart';
 import '../widgets/exam_form_dialog.dart';
@@ -16,7 +20,7 @@ class ExamPage extends ConsumerStatefulWidget {
 
 class _ExamPageState extends ConsumerState<ExamPage> {
   final _searchCtrl = TextEditingController();
-  String _filterStatus = "Tất cả";
+  String _filterStatus = 'all';
 
   @override
   void dispose() {
@@ -24,11 +28,29 @@ class _ExamPageState extends ConsumerState<ExamPage> {
     super.dispose();
   }
 
+  /// Combine examDate (midnight) with examTime ("HH:mm") for accurate comparison.
+  /// If examTime is missing, assumes end of day (23:59) so the exam stays "upcoming" all day.
+  DateTime _combineExamDateTime(ExamEntity e) {
+    final date = e.examDate!;
+    if (e.examTime != null && e.examTime!.contains(':')) {
+      try {
+        final parts = e.examTime!.split(':');
+        final hour = int.parse(parts[0]);
+        final minute = int.parse(parts[1]);
+        return DateTime(date.year, date.month, date.day, hour, minute);
+      } catch (_) {}
+    }
+    // Fallback: end of the exam day
+    return DateTime(date.year, date.month, date.day, 23, 59);
+  }
+
   void _showFormDialog({ExamEntity? exam}) {
+    final existingExams = ref.read(examsListProvider).asData?.value ?? [];
     showDialog(
       context: context,
       builder: (_) => ExamFormDialog(
         exam: exam,
+        existingExams: existingExams,
         onSave: (updatedExam) async {
           try {
             if (exam == null) {
@@ -65,42 +87,40 @@ class _ExamPageState extends ConsumerState<ExamPage> {
   }
 
   void _showDeleteConfirmation(String examId, String subjectName) {
+    final pageContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: pageContext,
+      builder: (dialogContext) => AlertDialog(
         title: const Text("Xóa lịch thi?"),
         content: Text("Bạn có chắc chắn muốn xóa lịch thi \"$subjectName\"?"),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text("Hủy", style: TextStyle(color: Colors.black)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
+              Navigator.pop(dialogContext);
               try {
                 await ref.read(examControllerProvider.notifier)
                     .deleteExam(examId);
                 ref.invalidate(examsListProvider);
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("✅ Xóa thành công"),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
+                if (!pageContext.mounted) return;
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  const SnackBar(
+                    content: Text("✅ Xóa thành công"),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
               } catch (e) {
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("❌ Lỗi: ${e.toString()}"),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                if (!pageContext.mounted) return;
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  SnackBar(
+                    content: Text("❌ Lỗi: ${e.toString()}"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
               }
             },
             child: const Text("Xóa", style: TextStyle(color: Colors.white)),
@@ -113,10 +133,11 @@ class _ExamPageState extends ConsumerState<ExamPage> {
   @override
   Widget build(BuildContext context) {
     final examsAsync = ref.watch(examsListProvider);
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Lịch thi", style: TextStyle(color: Colors.white)),
+        title: Text(l.exam, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
@@ -128,38 +149,34 @@ class _ExamPageState extends ConsumerState<ExamPage> {
       ),
       drawer: const AppDrawer(currentRoute: '/exam'),
       body: examsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 80, color: Colors.red[400]),
-              const SizedBox(height: 16),
-              const Text("Lỗi tải dữ liệu", style: TextStyle(fontSize: 18)),
-              const SizedBox(height: 12),
-              Text(error.toString(), style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
-                onPressed: () => ref.invalidate(examsListProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text("Tải lại"),
-              ),
-            ],
-          ),
+        loading: () => const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: ShimmerListLoading(itemCount: 5, itemHeight: 90),
+        ),
+        error: (error, stack) => ErrorStateWidget(
+          message: 'Lỗi tải dữ liệu',
+          detail: error.toString(),
+          onRetry: () => ref.invalidate(examsListProvider),
         ),
         data: (exams) {
           var filtered = exams;
 
-          if (_filterStatus == "Sắp tới") {
+            if (_filterStatus == 'upcoming') {
             filtered = filtered
-                .where((e) =>
-                    e.examDate != null && e.examDate!.isAfter(DateTime.now()))
+                .where((e) {
+                    if (e.examDate == null) return false;
+                    // Combine examDate + examTime for accurate comparison
+                    final examDateTime = _combineExamDateTime(e);
+                    return examDateTime.isAfter(DateTime.now());
+                })
                 .toList();
-          } else if (_filterStatus == "Đã qua") {
+            } else if (_filterStatus == 'past') {
             filtered = filtered
-                .where((e) =>
-                    e.examDate != null && e.examDate!.isBefore(DateTime.now()))
+                .where((e) {
+                    if (e.examDate == null) return false;
+                    final examDateTime = _combineExamDateTime(e);
+                    return examDateTime.isBefore(DateTime.now());
+                })
                 .toList();
           }
 
@@ -187,7 +204,9 @@ class _ExamPageState extends ConsumerState<ExamPage> {
                     TextField(
                       controller: _searchCtrl,
                       decoration: InputDecoration(
-                        hintText: "Tìm môn thi hoặc giảng viên...",
+                        hintText: l.isVietnamese
+                          ? 'Tìm môn thi hoặc giảng viên...'
+                          : 'Search exam or teacher...',
                         prefixIcon: const Icon(Icons.search),
                         suffixIcon: _searchCtrl.text.isNotEmpty
                             ? IconButton(
@@ -209,14 +228,18 @@ class _ExamPageState extends ConsumerState<ExamPage> {
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
-                        children: ["Tất cả", "Sắp tới", "Đã qua"]
+                        children: [
+                          ('all', l.all),
+                          ('upcoming', l.upcoming),
+                          ('past', l.past),
+                        ]
                             .map((status) => Padding(
                                   padding: const EdgeInsets.only(right: 8),
                                   child: FilterChip(
-                                    label: Text(status),
-                                    selected: _filterStatus == status,
+                                    label: Text(status.$2),
+                                    selected: _filterStatus == status.$1,
                                     onSelected: (_) =>
-                                        setState(() => _filterStatus = status),
+                                        setState(() => _filterStatus = status.$1),
                                   ),
                                 ))
                             .toList(),
@@ -232,25 +255,24 @@ class _ExamPageState extends ConsumerState<ExamPage> {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   child: filtered.isEmpty
-                      ? Center(
+                      ? EmptyStateWidget(
                           key: const ValueKey('exam-empty'),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.event_busy,
-                                  size: 80, color: Colors.grey[400]),
-                              const SizedBox(height: 16),
-                              const Text("Chưa có lịch thi nào",
-                                  style: TextStyle(fontSize: 20)),
-                              const SizedBox(height: 8),
-                              const Text("Nhấn + để thêm",
-                                  style: TextStyle(color: Colors.grey)),
-                            ],
-                          ),
+                          icon: Icons.quiz_outlined,
+                          title: l.noExams,
+                          subtitle: l.isVietnamese
+                              ? 'Nhấn nút + để thêm lịch thi mới'
+                              : 'Tap + to add a new exam',
+                          actionLabel: l.addExam,
+                          onAction: () => _showFormDialog(),
                         )
                       : ListView.builder(
                           key: const ValueKey('exam-list'),
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            12,
+                            12,
+                            MediaQuery.of(context).viewPadding.bottom + 12,
+                          ),
                           itemCount: filtered.length,
                           itemBuilder: (context, index) {
                             final exam = filtered[index];

@@ -12,7 +12,20 @@
           "package_name": "com.example.student_timetable_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "799795477803-iq00i93efpd8ae3ht3fr2t9ctv8r7s51.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.student_timetable_app",
+            "certificate_hash": "82ea207c68ac549176d5ef00fd07e455142e2c58"
+          }
+        },
+        {
+          "client_id": "799795477803-memghv62i1qagq7rb7mgdiibb602tjaj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAR49SkbvMC2v-Mjan7V62aHVAKFp7rF0E"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "799795477803-memghv62i1qagq7rb7mgdiibb602tjaj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "799795477803-foo273g99d6kjvj7udjm2mq7e6gl5avo.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.studentTimetableApp"
+              }
+            }
+          ]
         }
       }
     }

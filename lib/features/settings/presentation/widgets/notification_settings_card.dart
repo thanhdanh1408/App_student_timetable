@@ -1,6 +1,7 @@
 // lib/features/settings/presentation/widgets/notification_settings_card.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '/core/l10n/app_localizations.dart';
 import '/core/providers/notification_settings_provider.dart';
 
 class NotificationSettingsCard extends StatelessWidget {
@@ -8,6 +9,7 @@ class NotificationSettingsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final notificationSettings = context.watch<NotificationSettingsProvider>();
 
     return Card(
@@ -17,11 +19,11 @@ class NotificationSettingsCard extends StatelessWidget {
           // Thông báo lịch học
           ListTile(
             leading: const Icon(Icons.school, color: Colors.blue),
-            title: const Text("Thông báo lịch học"),
+            title: Text(l.isVietnamese ? "Thông báo lịch học" : "Schedule notifications"),
             subtitle: Text(
               notificationSettings.enableScheduleNotifications
-                  ? "Nhắc ${notificationSettings.getReminderText(notificationSettings.scheduleReminderMinutes)}"
-                  : "Đã tắt"
+                  ? (l.isVietnamese ? "Nhắc " : "Remind ") + notificationSettings.getReminderText(notificationSettings.scheduleReminderMinutes, isVietnamese: l.isVietnamese)
+                  : (l.isVietnamese ? "Đã tắt" : "Disabled")
             ),
             trailing: Switch(
               value: notificationSettings.enableScheduleNotifications,
@@ -38,14 +40,14 @@ class NotificationSettingsCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.access_time, size: 20, color: Colors.grey),
                   const SizedBox(width: 12),
-                  const Text("Nhắc trước:"),
+                  Text(l.isVietnamese ? "Nhắc trước:" : "Remind before:"),
                   const Spacer(),
                   DropdownButton<int>(
                     value: notificationSettings.scheduleReminderMinutes,
                     items: NotificationSettingsProvider.reminderOptions.map((minutes) {
                       return DropdownMenuItem(
                         value: minutes,
-                        child: Text(notificationSettings.getReminderText(minutes)),
+                        child: Text(notificationSettings.getReminderText(minutes, isVietnamese: l.isVietnamese)),
                       );
                     }).toList(),
                     onChanged: (value) {
@@ -62,11 +64,11 @@ class NotificationSettingsCard extends StatelessWidget {
           // Thông báo lịch thi
           ListTile(
             leading: const Icon(Icons.assignment, color: Colors.orange),
-            title: const Text("Thông báo lịch thi"),
+            title: Text(l.isVietnamese ? "Thông báo lịch thi" : "Exam notifications"),
             subtitle: Text(
               notificationSettings.enableExamNotifications
-                  ? "Nhắc ${notificationSettings.getReminderText(notificationSettings.examReminderMinutes)}"
-                  : "Đã tắt"
+                  ? (l.isVietnamese ? "Nhắc " : "Remind ") + notificationSettings.getReminderText(notificationSettings.examReminderMinutes, isVietnamese: l.isVietnamese)
+                  : (l.isVietnamese ? "Đã tắt" : "Disabled")
             ),
             trailing: Switch(
               value: notificationSettings.enableExamNotifications,
@@ -83,14 +85,14 @@ class NotificationSettingsCard extends StatelessWidget {
                 children: [
                   const Icon(Icons.access_time, size: 20, color: Colors.grey),
                   const SizedBox(width: 12),
-                  const Text("Nhắc trước:"),
+                  Text(l.isVietnamese ? "Nhắc trước:" : "Remind before:"),
                   const Spacer(),
                   DropdownButton<int>(
                     value: notificationSettings.examReminderMinutes,
                     items: NotificationSettingsProvider.reminderOptions.map((minutes) {
                       return DropdownMenuItem(
                         value: minutes,
-                        child: Text(notificationSettings.getReminderText(minutes)),
+                        child: Text(notificationSettings.getReminderText(minutes, isVietnamese: l.isVietnamese)),
                       );
                     }).toList(),
                     onChanged: (value) {

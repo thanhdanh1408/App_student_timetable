@@ -45,7 +45,7 @@ class ExamEntity {
       examDate: json['exam_date'] != null ? DateTime.parse(json['exam_date'] as String) : null,
       examTime: json['exam_time'] as String?,
       examName: json['exam_name'] as String?,
-      examRoom: json['exam_room'] as String?,
+      examRoom: json['location'] as String? ?? json['exam_room'] as String?,
       color: json['color'] as String?,
       notes: json['notes'] as String?,
       isCompleted: json['is_completed'] as bool? ?? false,

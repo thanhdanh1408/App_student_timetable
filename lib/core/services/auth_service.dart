@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'firebase_service.dart';
 
 class AuthService {
@@ -63,9 +64,66 @@ class AuthService {
     }
   }
 
+  /// Sign in with Google (google_sign_in v7.x API)
+  Future<UserCredential> signInWithGoogle() async {
+    try {
+      print('🔐 Google SignIn attempt...');
+
+      // Initialize the Google Sign-In plugin
+      await GoogleSignIn.instance.initialize();
+
+      // Trigger the Google authentication flow
+      // In v7.x, authenticate() throws GoogleSignInException on cancel/error
+      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
+
+      // Get the ID token from the authentication result
+      final String? idToken = googleUser.authentication.idToken;
+
+      if (idToken == null) {
+        throw Exception('Không lấy được token từ Google');
+      }
+
+      // Create Firebase credential with the Google ID token
+      final credential = GoogleAuthProvider.credential(idToken: idToken);
+
+      // Sign in to Firebase
+      final userCredential = await _firebaseService.auth.signInWithCredential(credential);
+
+      print('✅ Google SignIn success: user_id=${userCredential.user?.uid}');
+
+      // Create user profile in Firestore if first-time login
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+        final docRef = _firebaseService.firestore.collection('users').doc(user.uid);
+        final doc = await docRef.get();
+
+        if (!doc.exists) {
+          await _createUserProfile(
+            userId: user.uid,
+            email: user.email ?? '',
+            fullName: user.displayName ?? user.email?.split('@').first ?? 'User',
+          );
+        }
+      }
+
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('❌ Google SignIn failed: ${e.message} (code: ${e.code})');
+      throw Exception('Đăng nhập Google thất bại: ${_getVietnameseMessage(e.code)}');
+    } catch (e) {
+      print('❌ Google SignIn error: $e');
+      throw Exception('$e');
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     try {
+      try {
+        await GoogleSignIn.instance.signOut();
+      } catch (_) {
+        // Google sign-out may fail if user didn't sign in with Google — ignore
+      }
       await _firebaseService.auth.signOut();
     } on FirebaseAuthException catch (e) {
       throw Exception('Sign out failed: ${e.message}');

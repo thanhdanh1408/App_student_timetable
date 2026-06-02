@@ -30,13 +30,13 @@ final deleteSubjectUsecaseProvider = Provider<DeleteSubjectUsecase>((ref) {
 });
 
 /// Subjects list stream provider (reactive)
-final subjectsListProvider = FutureProvider.autoDispose((ref) async {
+final subjectsListProvider = FutureProvider((ref) async {
   final usecase = ref.watch(getSubjectsUsecaseProvider);
   return usecase.call();
 });
 
 /// Subjects controller provider (for state mutations)
-final subjectsControllerProvider = StateNotifierProvider.autoDispose<
+final subjectsControllerProvider = StateNotifierProvider<
     SubjectsController,
     AsyncValue<List>>(
   (ref) {
@@ -47,6 +47,7 @@ final subjectsControllerProvider = StateNotifierProvider.autoDispose<
       addUsecase: addUsecase,
       updateUsecase: updateUsecase,
       deleteUsecase: deleteUsecase,
+      ref: ref,
     );
   },
 );

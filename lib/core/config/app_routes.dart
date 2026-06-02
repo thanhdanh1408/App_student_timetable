@@ -15,6 +15,7 @@ import '/features/notifications/presentation/pages/notification_page.dart';
 import '/features/splash/presentation/pages/permission_check_page.dart';
 import '/features/grades/presentation/pages/grades_page.dart';
 import '/features/tasks/presentation/pages/tasks_page.dart';
+import '/features/notes/presentation/pages/notes_page.dart';
 
 class _BottomNavShell extends StatelessWidget {
   final Widget child;
@@ -68,6 +69,7 @@ GoRouter _createAppRouter(auth.AuthProvider authProvider) {
           GoRoute(path: '/settings', builder: (_, __) => const SettingsPage()),
           GoRoute(path: '/grades', builder: (_, __) => const GradesPage()),
           GoRoute(path: '/tasks', builder: (_, __) => const TasksPage()),
+          GoRoute(path: '/notes', builder: (_, __) => const NotesPage()),
         ],
       ),
     ],

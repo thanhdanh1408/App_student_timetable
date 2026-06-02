@@ -47,12 +47,8 @@ class SettingsViewModel with ChangeNotifier {
   Future<void> setDarkMode(bool value) async {
     try {
       if (_settings != null) {
-        final updated = UserSettingsEntity(
-          userId: _settings!.userId,
+        final updated = _settings!.copyWith(
           darkMode: value,
-          notifications: _settings!.notifications,
-          language: _settings!.language,
-          createdAt: _settings!.createdAt,
           updatedAt: DateTime.now(),
         );
         await _saveUsecase(updated);
@@ -68,12 +64,8 @@ class SettingsViewModel with ChangeNotifier {
   Future<void> setNotifications(bool value) async {
     try {
       if (_settings != null) {
-        final updated = UserSettingsEntity(
-          userId: _settings!.userId,
-          darkMode: _settings!.darkMode,
+        final updated = _settings!.copyWith(
           notifications: value,
-          language: _settings!.language,
-          createdAt: _settings!.createdAt,
           updatedAt: DateTime.now(),
         );
         await _saveUsecase(updated);
@@ -89,12 +81,8 @@ class SettingsViewModel with ChangeNotifier {
   Future<void> setLanguage(String lang) async {
     try {
       if (_settings != null) {
-        final updated = UserSettingsEntity(
-          userId: _settings!.userId,
-          darkMode: _settings!.darkMode,
-          notifications: _settings!.notifications,
+        final updated = _settings!.copyWith(
           language: lang,
-          createdAt: _settings!.createdAt,
           updatedAt: DateTime.now(),
         );
         await _saveUsecase(updated);

@@ -30,13 +30,13 @@ final deleteScheduleUsecaseProvider = Provider<DeleteScheduleUsecase>((ref) {
 });
 
 /// Schedules list stream provider (reactive)
-final schedulesListProvider = FutureProvider.autoDispose((ref) async {
+final schedulesListProvider = FutureProvider((ref) async {
   final usecase = ref.watch(getSchedulesUsecaseProvider);
   return usecase.call();
 });
 
 /// Schedules controller provider (for state mutations)
-final scheduleControllerProvider = StateNotifierProvider.autoDispose<
+final scheduleControllerProvider = StateNotifierProvider<
     ScheduleController,
     AsyncValue<List>>(
   (ref) {
@@ -47,6 +47,7 @@ final scheduleControllerProvider = StateNotifierProvider.autoDispose<
       addUsecase: addUsecase,
       updateUsecase: updateUsecase,
       deleteUsecase: deleteUsecase,
+      ref: ref,
     );
   },
 );

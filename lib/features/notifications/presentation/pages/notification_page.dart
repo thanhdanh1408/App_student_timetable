@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/core/widgets/app_drawer.dart';
+import '/core/l10n/app_localizations.dart';
 import '/features/notifications/presentation/viewmodels/notification_viewmodel.dart';
 import '../../domain/entities/notification_entity.dart';
 
@@ -34,13 +35,14 @@ class _NotificationPageState extends State<NotificationPage>
   @override
   Widget build(BuildContext context) {
     final notificationViewModel = context.watch<NotificationViewModel>();
+    final l = AppLocalizations.of(context);
     final notifications = notificationViewModel.notifications;
     final unreadCount = notifications.where((n) => !n.isRead).length;
     final readCount = notifications.where((n) => n.isRead).length;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Thông báo', style: TextStyle(color: Colors.white)),
+        title: Text(l.notifications, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
@@ -49,27 +51,27 @@ class _NotificationPageState extends State<NotificationPage>
           unselectedLabelColor: Colors.grey,
           indicatorColor: Colors.white,
           tabs: [
-            Tab(text: 'Tất cả (${notifications.length})'),
-            Tab(text: 'Chưa đọc ($unreadCount)'),
-            Tab(text: 'Đã đọc ($readCount)'),
+            Tab(text: '${l.all} (${notifications.length})'),
+            Tab(text: l.isVietnamese ? 'Chưa đọc ($unreadCount)' : 'Unread ($unreadCount)'),
+            Tab(text: l.isVietnamese ? 'Đã đọc ($readCount)' : 'Read ($readCount)'),
           ],
         ),
       ),
       drawer: const AppDrawer(currentRoute: '/notification'),
       body: notifications.isEmpty
-          ? _buildEmptyState()
+          ? _buildEmptyState(l)
           : TabBarView(
               controller: _tabController,
               children: [
-                _buildNotificationList(notifications),
-                _buildNotificationList(notifications.where((n) => !n.isRead).toList()),
-                _buildNotificationList(notifications.where((n) => n.isRead).toList()),
+                _buildNotificationList(notifications, l),
+                _buildNotificationList(notifications.where((n) => !n.isRead).toList(), l),
+                _buildNotificationList(notifications.where((n) => n.isRead).toList(), l),
               ],
             ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -77,7 +79,7 @@ class _NotificationPageState extends State<NotificationPage>
           Icon(Icons.notifications_none, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
-            'Chưa có thông báo',
+            l.isVietnamese ? 'Chưa có thông báo' : 'No notifications yet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -86,7 +88,9 @@ class _NotificationPageState extends State<NotificationPage>
           ),
           const SizedBox(height: 8),
           Text(
-            'Hệ thống sẽ gửi guồi thông báo nhắc nhở\nvề lịch học và lịch thi',
+            l.isVietnamese
+                ? 'Hệ thống sẽ gửi thông báo nhắc nhở\nvề lịch học và lịch thi'
+                : 'The system will send reminder\nnotifications about classes and exams',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -98,9 +102,9 @@ class _NotificationPageState extends State<NotificationPage>
     );
   }
 
-  Widget _buildNotificationList(List<NotificationEntity> notifications) {
+  Widget _buildNotificationList(List<NotificationEntity> notifications, AppLocalizations l) {
     if (notifications.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(l);
     }
 
     return RefreshIndicator(
@@ -109,7 +113,12 @@ class _NotificationPageState extends State<NotificationPage>
       },
       child: ListView.builder(
         itemCount: notifications.length,
-        padding: const EdgeInsets.all(8),
+        padding: EdgeInsets.fromLTRB(
+          8,
+          8,
+          8,
+          MediaQuery.of(context).viewPadding.bottom + 8,
+        ),
         itemBuilder: (context, index) {
           final notification = notifications[index];
           final isRead = notification.isRead;
@@ -155,7 +164,7 @@ class _NotificationPageState extends State<NotificationPage>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _formatTime(notification.scheduledFor),
+                    _formatTime(notification.scheduledFor, l),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[500],
@@ -168,7 +177,7 @@ class _NotificationPageState extends State<NotificationPage>
                 itemBuilder: (context) => [
                   if (!notification.isRead)
                     PopupMenuItem(
-                      child: const Text('✓ Đánh dấu đã đọc'),
+                      child: Text(l.isVietnamese ? '✓ Đánh dấu đã đọc' : '✓ Mark as read'),
                       onTap: () {
                         if (notificationId != null) {
                           context.read<NotificationViewModel>().markAsRead(notificationId);
@@ -176,9 +185,12 @@ class _NotificationPageState extends State<NotificationPage>
                       },
                     ),
                   PopupMenuItem(
-                    child: const Text('🗑️ Xóa'),
+                    child: Text(l.isVietnamese ? '🗑️ Xóa' : '🗑️ Delete'),
                     onTap: () {
-                      context.read<NotificationViewModel>().deleteByKey(index);
+                      final id = notification.id;
+                      if (id != null) {
+                        context.read<NotificationViewModel>().deleteNotification(id);
+                      }
                     },
                   ),
                 ],
@@ -216,18 +228,24 @@ class _NotificationPageState extends State<NotificationPage>
     }
   }
 
-  String _formatTime(DateTime dateTime) {
+  String _formatTime(DateTime dateTime, AppLocalizations l) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Vừa xong';
+      return l.isVietnamese ? 'Vừa xong' : 'Just now';
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} phút trước';
+      return l.isVietnamese
+          ? '${difference.inMinutes} phút trước'
+          : '${difference.inMinutes} minutes ago';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} giờ trước';
+      return l.isVietnamese
+          ? '${difference.inHours} giờ trước'
+          : '${difference.inHours} hours ago';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} ngày trước';
+      return l.isVietnamese
+          ? '${difference.inDays} ngày trước'
+          : '${difference.inDays} days ago';
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }

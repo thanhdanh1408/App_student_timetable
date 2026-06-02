@@ -91,15 +91,36 @@ class ExamRepositoryImpl implements ExamRepository {
         throw Exception('User ID is null');
       }
 
+      // Get subject info to denormalize
+      String subjectName = '';
+      String teacherName = '';
+      
+      if (exam.subjectId != null) {
+        try {
+          final subjectDoc = await _subjectsCollection.doc(exam.subjectId!).get();
+          if (subjectDoc.exists) {
+            subjectName = subjectDoc.data()?['subject_name'] ?? '';
+            teacherName = subjectDoc.data()?['teacher_name'] ?? '';
+          }
+        } catch (e) {
+          print('⚠️ Warning: Could not fetch subject info: $e');
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
       final docRef = await _examsCollection.add({
         'subject_id': exam.subjectId,
+        'subject_name': subjectName,
+        'teacher_name': teacherName,
+        'exam_name': exam.examName,
         'exam_date': exam.examDate != null ? exam.examDate!.toIso8601String() : null,
         'exam_time': exam.examTime,
-        'exam_name': exam.examName,
-        'exam_room': exam.examRoom,
+        'location': exam.examRoom ?? '',
+        'notes': exam.notes ?? '',
         'color': exam.color,
-        'notes': exam.notes,
         'is_completed': exam.isCompleted,
+        'created_at': now,
+        'updated_at': now,
       });
 
       final examId = docRef.id;
@@ -122,15 +143,35 @@ class ExamRepositoryImpl implements ExamRepository {
         throw Exception('Exam ID cannot be null');
       }
 
+      // Get subject info to denormalize
+      String subjectName = '';
+      String teacherName = '';
+      
+      if (exam.subjectId != null) {
+        try {
+          final subjectDoc = await _subjectsCollection.doc(exam.subjectId!).get();
+          if (subjectDoc.exists) {
+            subjectName = subjectDoc.data()?['subject_name'] ?? '';
+            teacherName = subjectDoc.data()?['teacher_name'] ?? '';
+          }
+        } catch (e) {
+          print('⚠️ Warning: Could not fetch subject info: $e');
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
       await _examsCollection.doc(exam.id!).update({
         'subject_id': exam.subjectId,
+        'subject_name': subjectName,
+        'teacher_name': teacherName,
+        'exam_name': exam.examName,
         'exam_date': exam.examDate != null ? exam.examDate!.toIso8601String() : null,
         'exam_time': exam.examTime,
-        'exam_name': exam.examName,
-        'exam_room': exam.examRoom,
+        'location': exam.examRoom ?? '',
+        'notes': exam.notes ?? '',
         'color': exam.color,
-        'notes': exam.notes,
         'is_completed': exam.isCompleted,
+        'updated_at': now,
       });
 
       print('✅ Exam updated in Firestore: ${exam.examName}');

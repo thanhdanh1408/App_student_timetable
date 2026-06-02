@@ -33,10 +33,10 @@ class HomeViewModel with ChangeNotifier {
     upcomingExams: [],
   );
 
-  final SubjectsViewModel? _subjectsViewModel;
-  final ScheduleViewModel? _scheduleViewModel;
-  final ExamViewModel? _examViewModel;
-  final NotificationViewModel? _notificationViewModel;
+  SubjectsViewModel? _subjectsViewModel;
+  ScheduleViewModel? _scheduleViewModel;
+  ExamViewModel? _examViewModel;
+  NotificationViewModel? _notificationViewModel;
 
   bool get isLoading => _isLoading;
   HomeSummary get summary => _summary;
@@ -46,15 +46,42 @@ class HomeViewModel with ChangeNotifier {
     ScheduleViewModel? scheduleViewModel,
     ExamViewModel? examViewModel,
     NotificationViewModel? notificationViewModel,
-  })  : _subjectsViewModel = subjectsViewModel,
-        _scheduleViewModel = scheduleViewModel,
-        _examViewModel = examViewModel,
-        _notificationViewModel = notificationViewModel {
+  }) {
+    updateDependencies(
+      subjectsViewModel,
+      scheduleViewModel,
+      examViewModel,
+      notificationViewModel,
+    );
+  }
+
+  /// Update dependency references without creating a new instance.
+  /// Called by ChangeNotifierProxyProvider4's `update` callback.
+  void updateDependencies(
+    SubjectsViewModel? subjectsViewModel,
+    ScheduleViewModel? scheduleViewModel,
+    ExamViewModel? examViewModel,
+    NotificationViewModel? notificationViewModel,
+  ) {
+    // Remove old listeners first to prevent leaks
+    _subjectsViewModel?.removeListener(_onDependenciesChange);
+    _scheduleViewModel?.removeListener(_onDependenciesChange);
+    _examViewModel?.removeListener(_onDependenciesChange);
+    _notificationViewModel?.removeListener(_onDependenciesChange);
+
+    // Update references
+    _subjectsViewModel = subjectsViewModel;
+    _scheduleViewModel = scheduleViewModel;
+    _examViewModel = examViewModel;
+    _notificationViewModel = notificationViewModel;
+
+    // Add new listeners
     _subjectsViewModel?.addListener(_onDependenciesChange);
     _scheduleViewModel?.addListener(_onDependenciesChange);
     _examViewModel?.addListener(_onDependenciesChange);
     _notificationViewModel?.addListener(_onDependenciesChange);
-    // Load summary ngay khi khởi tạo
+
+    // Reload summary with new data
     Future.microtask(() => loadSummary());
   }
 

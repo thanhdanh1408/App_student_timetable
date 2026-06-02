@@ -18,6 +18,7 @@ import 'features/notifications/domain/entities/notification_entity.dart';
 import 'features/settings/presentation/viewmodels/settings_viewmodel.dart';
 import 'features/grades/presentation/viewmodels/grades_viewmodel.dart';
 import 'features/tasks/presentation/viewmodels/tasks_viewmodel.dart';
+import 'features/notes/presentation/viewmodels/notes_viewmodel.dart';
 import 'core/providers/notification_settings_provider.dart';
 import 'core/providers/auth_provider.dart';
 
@@ -29,6 +30,7 @@ import 'features/notifications/data/repositories/notification_repository_impl.da
 import 'features/settings/data/repositories/settings_repository_impl.dart';
 import 'features/grades/data/repositories/grades_repository_impl.dart';
 import 'features/tasks/data/repositories/tasks_repository_impl.dart';
+import 'features/notes/data/repositories/notes_repository_impl.dart';
 
 // Usecases
 import 'features/subjects/domain/usecases/get_subjects_usecase.dart';
@@ -57,6 +59,10 @@ import 'features/tasks/domain/usecases/get_tasks_usecase.dart';
 import 'features/tasks/domain/usecases/add_task_usecase.dart';
 import 'features/tasks/domain/usecases/update_task_usecase.dart';
 import 'features/tasks/domain/usecases/delete_task_usecase.dart';
+import 'features/notes/domain/usecases/get_notes_usecase.dart';
+import 'features/notes/domain/usecases/add_note_usecase.dart';
+import 'features/notes/domain/usecases/update_note_usecase.dart';
+import 'features/notes/domain/usecases/delete_note_usecase.dart';
 import 'core/services/background_task_handler.dart';
 import 'core/services/notification_service.dart';
 
@@ -85,6 +91,7 @@ void main() async {
   final settingsRepo = SettingsRepositoryImpl();
   final gradesRepo = GradesRepositoryImpl();
   final tasksRepo = TasksRepositoryImpl();
+  final notesRepo = NotesRepositoryImpl();
 
   // 3. Khởi tạo Usecases
   final getSubjectsUsecase = GetSubjectsUsecase(subjectsRepo);
@@ -139,6 +146,11 @@ void main() async {
   final updateTaskUsecase = UpdateTaskUsecase(tasksRepo);
   final deleteTaskUsecase = DeleteTaskUsecase(tasksRepo);
 
+  final getNotesUsecase = GetNotesUsecase(notesRepo);
+  final addNoteUsecase = AddNoteUsecase(notesRepo);
+  final updateNoteUsecase = UpdateNoteUsecase(notesRepo);
+  final deleteNoteUsecase = DeleteNoteUsecase(notesRepo);
+
   // 4. Create AuthProvider first
   final authProvider = AuthProvider();
   await authProvider.initialize();
@@ -183,14 +195,17 @@ void main() async {
             update: updateScheduleUsecase,
             delete: deleteScheduleUsecase,
           )..load(),
-          update: (_, notificationSettings, previousScheduleViewModel) =>
-              previousScheduleViewModel ?? ScheduleViewModel(
-            get: getSchedulesUsecase,
-            add: addScheduleUsecase,
-            update: updateScheduleUsecase,
-            delete: deleteScheduleUsecase,
-            notificationSettings: notificationSettings,
-          ),
+          update: (_, notificationSettings, previousScheduleViewModel) {
+            // Always update the settings reference on the existing ViewModel
+            final vm = previousScheduleViewModel ?? ScheduleViewModel(
+              get: getSchedulesUsecase,
+              add: addScheduleUsecase,
+              update: updateScheduleUsecase,
+              delete: deleteScheduleUsecase,
+            );
+            vm.updateNotificationSettings(notificationSettings);
+            return vm;
+          },
         ),
 
         // Exam - needs NotificationSettingsProvider for custom reminder times
@@ -201,14 +216,17 @@ void main() async {
             update: updateExamUsecase,
             delete: deleteExamUsecase,
           )..load(),
-          update: (_, notificationSettings, previousExamViewModel) =>
-              previousExamViewModel ?? ExamViewModel(
-            get: getExamsUsecase,
-            add: addExamUsecase,
-            update: updateExamUsecase,
-            delete: deleteExamUsecase,
-            notificationSettings: notificationSettings,
-          ),
+          update: (_, notificationSettings, previousExamViewModel) {
+            // Always update the settings reference on the existing ViewModel
+            final vm = previousExamViewModel ?? ExamViewModel(
+              get: getExamsUsecase,
+              add: addExamUsecase,
+              update: updateExamUsecase,
+              delete: deleteExamUsecase,
+            );
+            vm.updateNotificationSettings(notificationSettings);
+            return vm;
+          },
         ),
 
         // Notifications
@@ -222,12 +240,25 @@ void main() async {
           )..load(), // Load data on creation
         ),
 
-        // Settings
-        ChangeNotifierProvider(
+        // Settings (loads per authenticated user to support app-wide preferences)
+        ChangeNotifierProxyProvider<AuthProvider, SettingsViewModel>(
           create: (_) => SettingsViewModel(
             get: getSettingsUsecase,
             save: saveSettingsUsecase,
           ),
+          update: (_, auth, vm) {
+            final settingsVm = vm ?? SettingsViewModel(
+              get: getSettingsUsecase,
+              save: saveSettingsUsecase,
+            );
+            final userId = auth.userId;
+            if (userId != null && userId.isNotEmpty) {
+              if (settingsVm.settings?.userId != userId && !settingsVm.isLoading) {
+                settingsVm.load(userId);
+              }
+            }
+            return settingsVm;
+          },
         ),
 
         // Grades (Sprint 2)
@@ -250,21 +281,29 @@ void main() async {
           )..load(),
         ),
 
-        // Home - tạo với đầy đủ các provider khác
+        // Notes (Sprint 3)
+        ChangeNotifierProvider(
+          create: (_) => NotesViewModel(
+            get: getNotesUsecase,
+            add: addNoteUsecase,
+            update: updateNoteUsecase,
+            delete: deleteNoteUsecase,
+          )..load(),
+        ),
+
+        // Home - reuse existing instance to avoid listener leaks
         ChangeNotifierProxyProvider4<SubjectsViewModel, ScheduleViewModel, ExamViewModel, NotificationViewModel, HomeViewModel>(
-          create: (_) => HomeViewModel(
-            subjectsViewModel: null,
-            scheduleViewModel: null,
-            examViewModel: null,
-            notificationViewModel: null,
-          ),
-          update: (_, subjectsViewModel, scheduleViewModel, examViewModel, notificationViewModel, previousHomeViewModel) =>
-              HomeViewModel(
-            subjectsViewModel: subjectsViewModel,
-            scheduleViewModel: scheduleViewModel,
-            examViewModel: examViewModel,
-            notificationViewModel: notificationViewModel,
-          ),
+          create: (_) => HomeViewModel(),
+          update: (_, subjectsViewModel, scheduleViewModel, examViewModel, notificationViewModel, previousHomeViewModel) {
+            final vm = previousHomeViewModel ?? HomeViewModel();
+            vm.updateDependencies(
+              subjectsViewModel,
+              scheduleViewModel,
+              examViewModel,
+              notificationViewModel,
+            );
+            return vm;
+          },
         ),
       ],
       child: const AppRoot(),

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '/core/services/auth_service.dart';
+import '/core/services/secure_storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final SecureStorageService _secureStorage = SecureStorageService();
 
   bool _isLoading = false;
   String? _error;
@@ -24,13 +26,33 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = user != null;
       _userEmail = user?.email;
       _userId = user?.uid;
+
+      if (user != null) {
+        await _secureStorage.saveAuthContext(
+          userId: user.uid,
+          email: user.email,
+        );
+      } else {
+        // Fallback for app cold start before Firebase refreshes auth state.
+        _userId = await _secureStorage.readUserId();
+        _userEmail = await _secureStorage.readUserEmail();
+      }
+
       notifyListeners();
 
       // Listen to auth state changes
-      _authService.getAuthStateChanges().listen((user) {
+      _authService.getAuthStateChanges().listen((user) async {
         _isAuthenticated = user != null;
         _userEmail = user?.email;
         _userId = user?.uid;
+        if (user != null) {
+          await _secureStorage.saveAuthContext(
+            userId: user.uid,
+            email: user.email,
+          );
+        } else {
+          await _secureStorage.clearAuthContext();
+        }
         notifyListeners();
       });
     } catch (e) {
@@ -83,6 +105,40 @@ class AuthProvider extends ChangeNotifier {
       _isAuthenticated = true;
       _userEmail = credential.user?.email;
       _userId = credential.user?.uid;
+      if (_userId != null) {
+        await _secureStorage.saveAuthContext(
+          userId: _userId!,
+          email: _userEmail,
+        );
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final credential = await _authService.signInWithGoogle();
+      _isAuthenticated = true;
+      _userEmail = credential.user?.email;
+      _userId = credential.user?.uid;
+      if (_userId != null) {
+        await _secureStorage.saveAuthContext(
+          userId: _userId!,
+          email: _userEmail,
+        );
+      }
       _isLoading = false;
       notifyListeners();
       return true;
@@ -105,6 +161,7 @@ class AuthProvider extends ChangeNotifier {
       _userEmail = null;
       _userId = null;
       _error = null;
+      await _secureStorage.clearAuthContext();
       _isLoading = false;
       notifyListeners();
     } catch (e) {

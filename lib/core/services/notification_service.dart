@@ -50,18 +50,19 @@ class NotificationService {
       onDidReceiveNotificationResponse: _onNotificationTapped,
     );
 
-    // Request permissions for Android 13+
-    await _requestPermissions();
+    // Do NOT request permissions here, do it after UI mounts
+    // await requestPermissions();
     
     _isInitialized = true;
   }
 
-  Future<void> _requestPermissions() async {
+  Future<void> requestPermissions() async {
     final androidPlugin = _notifications.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     
     if (androidPlugin != null) {
       await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
     }
 
     final iosPlugin = _notifications.resolvePlatformSpecificImplementation<
@@ -167,6 +168,82 @@ class NotificationService {
     } catch (e) {
       print('❌ Error scheduling notification: $e');
       print('🔔 ========================================');
+    }
+  }
+
+  /// Schedule a recurring weekly notification.
+  /// The notification will repeat every week on the same day/time.
+  /// Used for class schedule reminders that need to fire weekly.
+  Future<void> scheduleWeeklyNotification({
+    required String id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+    String? payload,
+    String type = 'schedule',
+  }) async {
+    if (!_isInitialized) await initialize();
+    if (kIsWeb) return;
+
+    final notificationId = id.hashCode;
+
+    // Cancel existing notification with same ID to avoid duplicates
+    await cancelNotification(id);
+
+    print('🔁 ========================================');
+    print('🔁 SCHEDULING WEEKLY NOTIFICATION');
+    print('🔁 ID: $id (notification #$notificationId)');
+    print('🔁 Title: $title');
+    print('🔁 Body: $body');
+    print('🔁 Scheduled Time: $scheduledTime');
+    print('🔁 Current Time: ${DateTime.now()}');
+    print('🔁 Timezone: ${tz.local.name}');
+
+    const androidDetails = AndroidNotificationDetails(
+      'schedule_channel',
+      'Lịch học và thi',
+      channelDescription: 'Thông báo nhắc nhở về lịch học và lịch thi',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    try {
+      await _notifications.zonedSchedule(
+        notificationId,
+        title,
+        body,
+        tz.TZDateTime.from(scheduledTime, tz.local),
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: payload,
+      );
+
+      print('✅ Successfully scheduled WEEKLY notification #$notificationId');
+      print('🔁 Will repeat every week on the same day/time');
+      print('🔁 ========================================');
+
+      // Save notification to database
+      if (onNotificationScheduled != null) {
+        await onNotificationScheduled!.call(id, title, body, type, scheduledTime);
+      }
+    } catch (e) {
+      print('❌ Error scheduling weekly notification: $e');
+      print('🔁 ========================================');
     }
   }
 

@@ -58,8 +58,30 @@ class NotificationViewModel with ChangeNotifier {
     }
   }
 
+  /// Delete a notification by its Firestore document ID (preferred, race-safe).
+  Future<void> deleteNotification(String id) async {
+    try {
+      await _deleteUsecase.byId(id);
+      await load();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// Delete by index key (legacy — kept for backward compatibility).
   Future<void> deleteByKey(int key) async {
     try {
+      // Prefer ID-based delete to avoid race conditions
+      if (key >= 0 && key < _notifications.length) {
+        final id = _notifications[key].id;
+        if (id != null) {
+          await _deleteUsecase.byId(id);
+          await load();
+          return;
+        }
+      }
+      // Fallback to index-based delete
       await _deleteUsecase(key);
       await load();
     } catch (e) {
@@ -91,6 +113,14 @@ class NotificationViewModel with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  /// Clear all in-memory notification data (e.g., on logout)
+  void clearData() {
+    _notifications = [];
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
   }
 }
 

@@ -14,62 +14,62 @@ abstract class Failure extends Equatable {
 /// Authentication-related failures
 class AuthenticationFailure extends Failure {
   const AuthenticationFailure({
-    String message = 'Authentication failed',
-  }) : super(message: message);
+    super.message = 'Authentication failed',
+  });
 }
 
 /// Authorization-related failures
 class AuthorizationFailure extends Failure {
   const AuthorizationFailure({
-    String message = 'You do not have permission to perform this action',
-  }) : super(message: message);
+    super.message = 'You do not have permission to perform this action',
+  });
 }
 
 /// Validation-related failures (form input, data validation)
 class ValidationFailure extends Failure {
   const ValidationFailure({
-    String message = 'Validation failed',
-  }) : super(message: message);
+    super.message = 'Validation failed',
+  });
 }
 
 /// Network-related failures
 class NetworkFailure extends Failure {
   const NetworkFailure({
-    String message = 'Network error. Please check your internet connection.',
-  }) : super(message: message);
+    super.message = 'Network error. Please check your internet connection.',
+  });
 }
 
 /// Server/Firestore-related failures
 class ServerFailure extends Failure {
   const ServerFailure({
-    String message = 'Server error. Please try again later.',
-  }) : super(message: message);
+    super.message = 'Server error. Please try again later.',
+  });
 }
 
 /// Cache/Local storage failures
 class CacheFailure extends Failure {
   const CacheFailure({
-    String message = 'Cache error. Please try again.',
-  }) : super(message: message);
+    super.message = 'Cache error. Please try again.',
+  });
 }
 
 /// Generic failures
 class GenericFailure extends Failure {
   const GenericFailure({
-    String message = 'An unexpected error occurred',
-  }) : super(message: message);
+    super.message = 'An unexpected error occurred',
+  });
 }
 
 /// Not found failures
 class NotFoundFailure extends Failure {
   const NotFoundFailure({
-    String message = 'The requested resource was not found',
-  }) : super(message: message);
+    super.message = 'The requested resource was not found',
+  });
 }
 
 /// Timeout failures
 class TimeoutFailure extends Failure {
   const TimeoutFailure({
-    String message = 'Operation timed out. Please try again.',
-  }) : super(message: message);
+    super.message = 'Operation timed out. Please try again.',
+  });
 }

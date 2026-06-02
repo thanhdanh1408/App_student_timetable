@@ -101,7 +101,7 @@ void main() {
           color: '#FF00FF',
         );
         when(mockRepository.add(tSubject))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await addSubjectUsecase.call(tSubject);
@@ -125,7 +125,7 @@ void main() {
           credit: 3,
         );
         when(mockRepository.update(tSubject))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await updateSubjectUsecase.call(tSubject);
@@ -144,7 +144,7 @@ void main() {
         
         const tSubjectId = '1';
         when(mockRepository.delete(tSubjectId))
-            .thenAnswer((_) async => null);
+            .thenAnswer((_) async {});
 
         // Act
         await deleteSubjectUsecase.call(tSubjectId);

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '/core/widgets/app_drawer.dart';
+import '/core/widgets/shimmer_loading.dart';
+import '/core/widgets/empty_state_widget.dart';
+import '/core/l10n/app_localizations.dart';
 
 import '../viewmodels/grades_viewmodel.dart';
 import '../widgets/grade_card.dart';
@@ -40,24 +43,27 @@ class _GradesPageState extends State<GradesPage> {
   }
 
   void _confirmDelete(String id, String subjectName) {
+    final l = AppLocalizations.of(context);
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Xóa điểm?'),
-        content: Text('Bạn có chắc muốn xóa điểm của môn "$subjectName"?'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l.isVietnamese ? 'Xóa điểm?' : 'Delete grade?'),
+        content: Text(l.isVietnamese 
+            ? 'Bạn có chắc muốn xóa điểm của môn "$subjectName"?' 
+            : 'Are you sure you want to delete the grade for "$subjectName"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy', style: TextStyle(color: Colors.black)),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               await context.read<GradesViewModel>().delete(id);
-              if (!mounted) return;
-              Navigator.pop(context);
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
             },
-            child: const Text('Xóa', style: TextStyle(color: Colors.white)),
+            child: Text(l.delete, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -67,10 +73,11 @@ class _GradesPageState extends State<GradesPage> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<GradesViewModel>();
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quản lý điểm', style: TextStyle(color: Colors.white)),
+        title: Text(l.grades, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -85,50 +92,168 @@ class _GradesPageState extends State<GradesPage> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Container(
-              margin: const EdgeInsets.all(12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                color: Colors.indigo.withOpacity(0.08),
-                border: Border.all(color: Colors.indigo.withOpacity(0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tổng quan GPA',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text('GPA hệ 10: ${vm.gpa10.toStringAsFixed(2)}'),
-                  Text('GPA hệ 4: ${vm.gpa4.toStringAsFixed(2)}'),
-                  Text('Số môn đã có điểm: ${vm.grades.length}'),
-                ],
-              ),
+            // GPA Overview Card
+            _GpaSummaryCard(vm: vm),
+            // Content
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: vm.isLoading
+                  ? const Padding(
+                      key: ValueKey('grades-loading'),
+                      padding: EdgeInsets.only(top: 16),
+                      child: ShimmerListLoading(itemCount: 4, itemHeight: 80),
+                    )
+                  : vm.grades.isEmpty
+                      ? Padding(
+                          key: const ValueKey('grades-empty'),
+                          padding: const EdgeInsets.only(top: 60),
+                          child: EmptyStateWidget(
+                            icon: Icons.school_outlined,
+                            title: l.noGrades,
+                            subtitle: l.isVietnamese ? 'Nhấn nút + để thêm điểm môn học' : 'Tap + to add a grade',
+                            actionLabel: l.addGrade,
+                            onAction: () => _showForm(),
+                          ),
+                        )
+                      : Column(
+                          key: const ValueKey('grades-list'),
+                          children: vm.grades.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final g = entry.value;
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: 1),
+                              duration: Duration(milliseconds: 250 + index * 40),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                return Opacity(
+                                  opacity: value,
+                                  child: Transform.translate(
+                                    offset: Offset(0, 12 * (1 - value)),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: GradeCard(
+                                grade: g,
+                                onEdit: () => _showForm(grade: g),
+                                onDelete: () => _confirmDelete(g.id!, g.subjectName ?? 'N/A'),
+                              ),
+                            );
+                          }).toList(),
+                        ),
             ),
-            if (vm.isLoading)
-              const Padding(
-                padding: EdgeInsets.only(top: 60),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (vm.grades.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 80),
-                child: Center(child: Text('Chưa có dữ liệu điểm. Nhấn + để thêm.')),
-              )
-            else
-              ...vm.grades.map(
-                (g) => GradeCard(
-                  grade: g,
-                  onEdit: () => _showForm(grade: g),
-                  onDelete: () => _confirmDelete(g.id!, g.subjectName ?? 'N/A'),
-                ),
-              ),
-            const SizedBox(height: 80),
+            SizedBox(height: MediaQuery.of(context).viewPadding.bottom + 80),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _GpaSummaryCard extends StatelessWidget {
+  final GradesViewModel vm;
+
+  const _GpaSummaryCard({required this.vm});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primary.withOpacity(0.08),
+            colorScheme.primary.withOpacity(0.03),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: colorScheme.primary.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights, color: colorScheme.primary, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                l.gpaOverview,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _GpaItem(
+                  label: l.gpa10,
+                  value: vm.gpa10.toStringAsFixed(2),
+                  color: Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _GpaItem(
+                  label: l.gpa4,
+                  value: vm.gpa4.toStringAsFixed(2),
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _GpaItem(
+                  label: l.subjectCount,
+                  value: '${vm.grades.length}',
+                  color: Colors.orange,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GpaItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _GpaItem({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          ),
+        ),
+      ],
     );
   }
 }

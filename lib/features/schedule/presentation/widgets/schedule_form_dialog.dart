@@ -1,6 +1,7 @@
 // lib/features/schedule/presentation/widgets/schedule_form_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/l10n/app_localizations.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../subjects/presentation/providers/subjects_provider.dart';
 import '../../../subjects/domain/entities/subject_entity.dart';
@@ -9,8 +10,9 @@ import '../../domain/entities/schedule_entity.dart';
 class ScheduleFormDialog extends ConsumerStatefulWidget {
   final ScheduleEntity? schedule;
   final Function(ScheduleEntity) onSave;
+  final List<ScheduleEntity> existingSchedules;
 
-  const ScheduleFormDialog({super.key, this.schedule, required this.onSave});
+  const ScheduleFormDialog({super.key, this.schedule, required this.onSave, this.existingSchedules = const []});
 
   @override
   ConsumerState<ScheduleFormDialog> createState() => _ScheduleFormDialogState();
@@ -46,9 +48,9 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
     super.didChangeDependencies();
     if (_didInitFromData) return;
 
-    final subjects = ref.watch(subjectsListProvider).maybeWhen(
+    final List<SubjectEntity> subjects = ref.watch(subjectsListProvider).maybeWhen(
       data: (data) => data,
-      orElse: () => [],
+      orElse: () => <SubjectEntity>[],
     );
 
     if (widget.schedule != null) {
@@ -98,7 +100,10 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
     }
   }
 
-  String _formatTime(TimeOfDay? time) => time == null ? "Chưa chọn" : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  String _formatTime(TimeOfDay? time) {
+    final l = AppLocalizations.of(context);
+    return time == null ? l.notSelected : '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  }
 
   Future<void> _pickTime(bool isStart) async {
     final picked = await showTimePicker(
@@ -124,6 +129,7 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
   }
 
   void _validateForm() {
+    final l = AppLocalizations.of(context);
     // Validate location
     final locationResult = FormValidator.validateLocation(_locationCtrl.text);
     if (locationResult.isFailure()) {
@@ -133,7 +139,7 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
 
     // Validate time format
     if (_startTime == null || _endTime == null) {
-      setState(() => _validationError = "Vui lòng chọn giờ bắt đầu và kết thúc");
+      setState(() => _validationError = l.selectStartEndTime);
       return;
     }
 
@@ -141,30 +147,61 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
     final startMinutes = _startTime!.hour * 60 + _startTime!.minute;
     final endMinutes = _endTime!.hour * 60 + _endTime!.minute;
     if (endMinutes <= startMinutes) {
-      setState(() => _validationError = "Giờ kết thúc phải sau giờ bắt đầu");
+      setState(() => _validationError = l.endTimeAfterStart);
       return;
     }
 
     // Validate max duration (6 hours)
     final durationMinutes = endMinutes - startMinutes;
     if (durationMinutes > 360) {
-      setState(() => _validationError = "Thời lượng buổi học không được vượt quá 6 giờ");
+      setState(() => _validationError = l.maxClassDuration);
       return;
     }
 
     setState(() => _validationError = null);
   }
 
+  /// Check if two time ranges overlap
+  bool _timesOverlap(TimeOfDay s1Start, TimeOfDay s1End, TimeOfDay s2Start, TimeOfDay s2End) {
+    final s1StartMin = s1Start.hour * 60 + s1Start.minute;
+    final s1EndMin = s1End.hour * 60 + s1End.minute;
+    final s2StartMin = s2Start.hour * 60 + s2Start.minute;
+    final s2EndMin = s2End.hour * 60 + s2End.minute;
+    return s1StartMin < s2EndMin && s2StartMin < s1EndMin;
+  }
+
+  /// Check for schedule conflicts with existing schedules
+  String? _checkScheduleConflict() {
+    if (_dayOfWeek == null || _startTime == null || _endTime == null) return null;
+
+    for (final existing in widget.existingSchedules) {
+      // Skip self when editing
+      if (widget.schedule != null && existing.id == widget.schedule!.id) continue;
+      // Only check same day
+      if (existing.dayOfWeek != _dayOfWeek) continue;
+
+      final existingStart = _parseTime(existing.startTime);
+      final existingEnd = _parseTime(existing.endTime);
+
+      if (_timesOverlap(_startTime!, _endTime!, existingStart, existingEnd)) {
+        return '⚠️ Trùng giờ với "${existing.subjectName ?? "Môn khác"}" '
+            '(${_formatTime(existingStart)} - ${_formatTime(existingEnd)})';
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final subjectsAsync = ref.watch(subjectsListProvider);
-    final subjects = subjectsAsync.maybeWhen(
+    final List<SubjectEntity> subjects = subjectsAsync.maybeWhen(
       data: (data) => data,
-      orElse: () => [],
+      orElse: () => <SubjectEntity>[],
     );
 
     return AlertDialog(
-      title: Text(widget.schedule == null ? "Thêm buổi học" : "Chỉnh sửa buổi học"),
+      title: Text(widget.schedule == null ? l.addScheduleTitle : l.editScheduleTitle),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -180,7 +217,7 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text(
-                  "Lỗi tải danh sách môn học",
+                  l.loadSubjectsFailed,
                   style: TextStyle(color: Colors.red[600]),
                 ),
               )
@@ -219,10 +256,10 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                     // Subject dropdown
                     DropdownButtonFormField<SubjectEntity>(
                       value: _selectedSubject,
-                      decoration: const InputDecoration(
-                        labelText: "Chọn môn học*",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.book),
+                      decoration: InputDecoration(
+                        labelText: l.selectSubject,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.book),
                       ),
                       items: subjects
                           .map<DropdownMenuItem<SubjectEntity>>((s) =>
@@ -234,25 +271,25 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                           _validationError = null;
                         });
                       },
-                      validator: (v) => v == null ? "Chọn môn học" : null,
+                      validator: (v) => v == null ? l.selectSubjectError : null,
                     ),
                     const SizedBox(height: 16),
                     // Day of week dropdown
                     DropdownButtonFormField<int>(
                       value: _dayOfWeek,
-                      decoration: const InputDecoration(
-                        labelText: "Thứ*",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_today),
+                      decoration: InputDecoration(
+                        labelText: l.selectDay,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.calendar_today),
                       ),
                       items: [
-                        DropdownMenuItem(value: 2, child: const Text("Thứ 2")),
-                        DropdownMenuItem(value: 3, child: const Text("Thứ 3")),
-                        DropdownMenuItem(value: 4, child: const Text("Thứ 4")),
-                        DropdownMenuItem(value: 5, child: const Text("Thứ 5")),
-                        DropdownMenuItem(value: 6, child: const Text("Thứ 6")),
-                        DropdownMenuItem(value: 7, child: const Text("Thứ 7")),
-                        DropdownMenuItem(value: 8, child: const Text("Chủ nhật")),
+                        DropdownMenuItem(value: 2, child: Text(l.monday)),
+                        DropdownMenuItem(value: 3, child: Text(l.tuesday)),
+                        DropdownMenuItem(value: 4, child: Text(l.wednesday)),
+                        DropdownMenuItem(value: 5, child: Text(l.thursday)),
+                        DropdownMenuItem(value: 6, child: Text(l.friday)),
+                        DropdownMenuItem(value: 7, child: Text(l.saturday)),
+                        DropdownMenuItem(value: 8, child: Text(l.sunday)),
                       ],
                       onChanged: (v) {
                         setState(() {
@@ -260,17 +297,17 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                           _validationError = null;
                         });
                       },
-                      validator: (v) => v == null ? "Chọn thứ" : null,
+                      validator: (v) => v == null ? l.selectDayError : null,
                     ),
                     const SizedBox(height: 16),
                     // Location field
                     TextFormField(
                       controller: _locationCtrl,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        labelText: "Địa điểm",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.location_on),
+                      decoration: InputDecoration(
+                        labelText: l.location,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.location_on),
                       ),
                       onChanged: (_) {
                         if (_validationError != null) {
@@ -283,23 +320,27 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                     TextFormField(
                       controller: _notesCtrl,
                       enabled: !_isLoading,
-                      decoration: const InputDecoration(
-                        labelText: "Ghi chú",
-                        hintText: "Nhập ghi chú (tùy chọn)",
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.note),
+                      decoration: InputDecoration(
+                        labelText: l.notes,
+                        hintText: l.notesHint,
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.note),
                       ),
                       maxLines: 3,
+                      validator: (value) {
+                        final result = FormValidator.validateOptionalLength(value ?? '', 'Notes', 1000);
+                        return result.isFailure() ? 'Ghi chú tối đa 1000 ký tự' : null;
+                      },
                     ),
                     const SizedBox(height: 16),
                     // Start time picker
                     GestureDetector(
                       onTap: _isLoading ? null : () => _pickTime(true),
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: "Giờ bắt đầu*",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.schedule),
+                        decoration: InputDecoration(
+                          labelText: l.startTime,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.schedule),
                         ),
                         child: Text(_formatTime(_startTime)),
                       ),
@@ -309,10 +350,10 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                     GestureDetector(
                       onTap: _isLoading ? null : () => _pickTime(false),
                       child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: "Giờ kết thúc*",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.schedule),
+                        decoration: InputDecoration(
+                          labelText: l.endTime,
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.schedule),
                         ),
                         child: Text(_formatTime(_endTime)),
                       ),
@@ -326,7 +367,7 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text("Hủy", style: TextStyle(color: Colors.black)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -341,7 +382,14 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
 
                   if (!_formKey.currentState!.validate()) return;
                   if (_selectedSubject == null) {
-                    setState(() => _validationError = "Chọn môn học");
+                    setState(() => _validationError = l.selectSubjectError);
+                    return;
+                  }
+
+                  // Check for schedule conflicts
+                  final conflict = _checkScheduleConflict();
+                  if (conflict != null) {
+                    setState(() => _validationError = conflict);
                     return;
                   }
 
@@ -365,11 +413,11 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                     );
 
                     await widget.onSave(schedule);
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     Navigator.pop(context);
                   } catch (e) {
                     setState(() => _isLoading = false);
-                    if (!mounted) return;
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text("❌ Lỗi: ${e.toString()}"),
@@ -388,7 +436,7 @@ class _ScheduleFormDialogState extends ConsumerState<ScheduleFormDialog> {
                   ),
                 )
               : Text(
-                  widget.schedule == null ? "Thêm" : "Lưu",
+                  widget.schedule == null ? l.add : l.save,
                   style: const TextStyle(color: Colors.white),
                 ),
         ),

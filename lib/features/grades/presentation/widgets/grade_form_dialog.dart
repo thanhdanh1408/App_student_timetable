@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '/core/l10n/app_localizations.dart';
 
 import '../../../subjects/domain/entities/subject_entity.dart';
 import '../../../subjects/presentation/viewmodels/subjects_viewmodel.dart';
+import '../../../../core/utils/validators.dart';
 import '../../domain/entities/grade_entity.dart';
 
 class GradeFormDialog extends StatefulWidget {
@@ -59,10 +61,13 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final subjects = context.watch<SubjectsViewModel>().subjects;
 
     return AlertDialog(
-      title: Text(widget.grade == null ? 'Thêm điểm môn học' : 'Cập nhật điểm'),
+      title: Text(widget.grade == null
+          ? (l.isVietnamese ? 'Thêm điểm môn học' : 'Add grade')
+          : (l.isVietnamese ? 'Cập nhật điểm' : 'Update grade')),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -71,9 +76,9 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
             children: [
               DropdownButtonFormField<SubjectEntity>(
                 value: _selectedSubject,
-                decoration: const InputDecoration(
-                  labelText: 'Môn học*',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Môn học*' : 'Subject*',
+                  border: const OutlineInputBorder(),
                 ),
                 items: subjects
                     .map((s) => DropdownMenuItem<SubjectEntity>(
@@ -82,37 +87,48 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
                         ))
                     .toList(),
                 onChanged: (v) => setState(() => _selectedSubject = v),
-                validator: (v) => v == null ? 'Vui lòng chọn môn học' : null,
+                validator: (v) => v == null
+                    ? (l.isVietnamese ? 'Vui lòng chọn môn học' : 'Please select a subject')
+                    : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _scoreCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Điểm hệ 10*',
-                  hintText: 'Ví dụ: 8.5',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Điểm (hệ 10)*' : 'Score (10-point)*',
+                  hintText: '8.5',
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 validator: (v) {
                   final value = double.tryParse(v?.trim() ?? '');
-                  if (value == null) return 'Điểm không hợp lệ';
-                  if (value < 0 || value > 10) return 'Điểm phải từ 0 đến 10';
+                  if (value == null) {
+                    return l.isVietnamese ? 'Điểm không hợp lệ' : 'Invalid score';
+                  }
+                  final rangeResult = FormValidator.validateNumberRange(value, 'Score', 0, 10);
+                  if (rangeResult.isFailure()) {
+                    return l.isVietnamese ? 'Điểm phải từ 0 đến 10' : 'Score must be between 0 and 10';
+                  }
                   return null;
                 },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _creditCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Số tín chỉ*',
-                  hintText: 'Ví dụ: 3',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Số tín chỉ*' : 'Credits*',
+                  hintText: '3',
+                  border: const OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.number,
                 validator: (v) {
                   final value = int.tryParse(v?.trim() ?? '');
-                  if (value == null) return 'Tín chỉ không hợp lệ';
-                  if (value <= 0 || value > 10) return 'Tín chỉ phải từ 1 đến 10';
+                  if (value == null) {
+                    return l.isVietnamese ? 'Tín chỉ không hợp lệ' : 'Invalid credits';
+                  }
+                  if (value <= 0 || value > 10) {
+                    return l.isVietnamese ? 'Tín chỉ phải từ 1 đến 10' : 'Credits must be between 1 and 10';
+                  }
                   return null;
                 },
               ),
@@ -120,11 +136,17 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
               TextFormField(
                 controller: _noteCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú',
-                  hintText: 'Nhập ghi chú (tuỳ chọn)',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Ghi chú' : 'Notes',
+                  hintText: l.isVietnamese ? 'Tùy chọn' : 'Optional',
+                  border: const OutlineInputBorder(),
                 ),
+                validator: (v) {
+                  final result = FormValidator.validateOptionalLength(v ?? '', 'Note', 500);
+                  return result.isFailure()
+                      ? (l.isVietnamese ? 'Ghi chú tối đa 500 ký tự' : 'Notes can be up to 500 characters')
+                      : null;
+                },
               ),
             ],
           ),
@@ -133,7 +155,7 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Hủy', style: TextStyle(color: Colors.black)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
@@ -156,7 +178,7 @@ class _GradeFormDialogState extends State<GradeFormDialog> {
             Navigator.of(context).pop();
           },
           child: Text(
-            widget.grade == null ? 'Thêm' : 'Lưu',
+            widget.grade == null ? l.add : l.save,
             style: const TextStyle(color: Colors.white),
           ),
         ),

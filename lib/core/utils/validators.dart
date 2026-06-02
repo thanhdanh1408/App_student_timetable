@@ -70,6 +70,41 @@ class FormValidator {
     return Success(value.trim());
   }
 
+  /// Validate optional string length (allows empty)
+  static Result<String?> validateOptionalLength(
+    String value,
+    String fieldName,
+    int maxLength,
+  ) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return const Success(null);
+    if (trimmed.length > maxLength) {
+      return FailureResult(
+        ValidationFailure(
+          message: '$fieldName cannot exceed $maxLength characters',
+        ),
+      );
+    }
+    return Success(trimmed);
+  }
+
+  /// Validate number range
+  static Result<double> validateNumberRange(
+    double value,
+    String fieldName,
+    double min,
+    double max,
+  ) {
+    if (value < min || value > max) {
+      return FailureResult(
+        ValidationFailure(
+          message: '$fieldName must be between $min and $max',
+        ),
+      );
+    }
+    return Success(value);
+  }
+
   /// Validate time format (HH:mm)
   static Result<String> validateTimeFormat(String time) {
     if (time.isEmpty) {

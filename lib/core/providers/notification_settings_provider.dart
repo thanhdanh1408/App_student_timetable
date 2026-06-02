@@ -127,14 +127,14 @@ class NotificationSettingsProvider extends ChangeNotifier {
   }
 
   // Lấy text mô tả thời gian nhắc nhở
-  String getReminderText(int minutes) {
+  String getReminderText(int minutes, {bool isVietnamese = true}) {
     if (minutes < 60) {
-      return '$minutes phút trước';
+      return isVietnamese ? '$minutes phút trước' : '$minutes mins before';
     } else if (minutes == 60) {
-      return '1 giờ trước';
+      return isVietnamese ? '1 giờ trước' : '1 hour before';
     } else {
       final hours = minutes ~/ 60;
-      return '$hours giờ trước';
+      return isVietnamese ? '$hours giờ trước' : '$hours hours before';
     }
   }
 }

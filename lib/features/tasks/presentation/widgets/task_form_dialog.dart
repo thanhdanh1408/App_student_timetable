@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '/core/l10n/app_localizations.dart';
+import '../../../../core/utils/validators.dart';
 
 import '../../domain/entities/task_entity.dart';
 
@@ -43,14 +45,19 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
   }
 
   String _formatDate(DateTime? date) {
-    if (date == null) return 'Chưa chọn';
+    if (date == null) {
+      return AppLocalizations.of(context).isVietnamese ? 'Chưa chọn' : 'Not selected';
+    }
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(widget.task == null ? 'Thêm công việc' : 'Cập nhật công việc'),
+      title: Text(widget.task == null
+          ? (l.isVietnamese ? 'Thêm công việc' : 'Add task')
+          : (l.isVietnamese ? 'Cập nhật công việc' : 'Update task')),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -59,42 +66,59 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
             children: [
               TextFormField(
                 controller: _titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Tiêu đề*',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Tiêu đề*' : 'Title*',
+                  border: const OutlineInputBorder(),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Vui lòng nhập tiêu đề' : null,
+                validator: (v) {
+                  final result = FormValidator.validateLength(v ?? '', 'Title', 1, 120);
+                  return result.isFailure()
+                      ? (l.isVietnamese ? 'Tiêu đề tối đa 120 ký tự' : 'Title can be up to 120 characters')
+                      : null;
+                },
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Mô tả',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Mô tả' : 'Description',
+                  border: const OutlineInputBorder(),
                 ),
+                validator: (v) {
+                  final result = FormValidator.validateOptionalLength(v ?? '', 'Description', 500);
+                  return result.isFailure()
+                      ? (l.isVietnamese ? 'Mô tả tối đa 500 ký tự' : 'Description can be up to 500 characters')
+                      : null;
+                },
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _priority,
-                decoration: const InputDecoration(
-                  labelText: 'Độ ưu tiên',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Mức độ ưu tiên' : 'Priority',
+                  border: const OutlineInputBorder(),
                 ),
                 items: const ['High', 'Medium', 'Low']
-                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .map((p) => DropdownMenuItem(
+                          value: p,
+                          child: Text(l.isVietnamese ? (p == 'High' ? 'Cao' : p == 'Low' ? 'Thấp' : 'Trung bình') : p),
+                        ))
                     .toList(),
                 onChanged: (v) => setState(() => _priority = v ?? 'Medium'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _status,
-                decoration: const InputDecoration(
-                  labelText: 'Trạng thái',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Trạng thái' : 'Status',
+                  border: const OutlineInputBorder(),
                 ),
                 items: const ['Todo', 'In Progress', 'Done']
-                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .map((s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(l.isVietnamese ? (s == 'Todo' ? 'Cần làm' : s == 'In Progress' ? 'Đang làm' : 'Hoàn thành') : s),
+                        ))
                     .toList(),
                 onChanged: (v) => setState(() => _status = v ?? 'Todo'),
               ),
@@ -127,9 +151,9 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
                   });
                 },
                 child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Hạn chót (deadline)',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l.isVietnamese ? 'Hạn chót' : 'Deadline',
+                    border: const OutlineInputBorder(),
                   ),
                   child: Text(_formatDate(_dueDate)),
                 ),
@@ -138,10 +162,16 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
               TextFormField(
                 controller: _notesCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Ghi chú',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? 'Ghi chú' : 'Notes',
+                  border: const OutlineInputBorder(),
                 ),
+                validator: (v) {
+                  final result = FormValidator.validateOptionalLength(v ?? '', 'Notes', 1000);
+                  return result.isFailure()
+                      ? (l.isVietnamese ? 'Ghi chú tối đa 1000 ký tự' : 'Notes can be up to 1000 characters')
+                      : null;
+                },
               ),
             ],
           ),
@@ -150,7 +180,7 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Hủy', style: TextStyle(color: Colors.black)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
@@ -169,11 +199,18 @@ class _TaskFormDialogState extends State<TaskFormDialog> {
               createdAt: widget.task?.createdAt ?? DateTime.now(),
             );
 
-            await widget.onSave(task);
-            if (!context.mounted) return;
-            Navigator.of(context).pop();
+            try {
+              await widget.onSave(task);
+              if (!context.mounted) return;
+              Navigator.of(context).pop();
+            } catch (e) {
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+              );
+            }
           },
-          child: Text(widget.task == null ? 'Thêm' : 'Lưu', style: const TextStyle(color: Colors.white)),
+          child: Text(widget.task == null ? l.add : l.save, style: const TextStyle(color: Colors.white)),
         ),
       ],
     );

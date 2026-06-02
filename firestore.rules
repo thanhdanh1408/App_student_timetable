@@ -2,35 +2,156 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isSignedInAs(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // ─── Validation helpers ───────────────────────────────────────────
+
+    function validSubjectsPayload() {
+      return request.resource.data.keys().hasOnly([
+        'subject_name', 'teacher_name', 'credit', 'color', 'created_at', 'updated_at'
+      ])
+      && request.resource.data.subject_name is string
+      && request.resource.data.subject_name.size() > 0
+      && request.resource.data.subject_name.size() <= 100
+      && (!('teacher_name' in request.resource.data) || request.resource.data.teacher_name == null || (request.resource.data.teacher_name is string && request.resource.data.teacher_name.size() <= 100))
+      && (!('credit' in request.resource.data) || request.resource.data.credit == null || (request.resource.data.credit is int && request.resource.data.credit >= 1 && request.resource.data.credit <= 10))
+      && (!('color' in request.resource.data) || request.resource.data.color == null || request.resource.data.color is string)
+      && ('created_at' in request.resource.data && request.resource.data.created_at is string)
+      && ('updated_at' in request.resource.data && request.resource.data.updated_at is string);
+    }
+
+    function validSchedulesPayload() {
+      return request.resource.data.keys().hasOnly([
+        'subject_id', 'subject_name', 'teacher_name', 'day_of_week', 'start_time', 'end_time', 'location', 'notes', 'color', 'is_enabled', 'created_at', 'updated_at'
+      ])
+      && request.resource.data.day_of_week is int
+      && request.resource.data.day_of_week >= 2
+      && request.resource.data.day_of_week <= 8
+      && (!('subject_id' in request.resource.data) || request.resource.data.subject_id == null || request.resource.data.subject_id is string)
+      && (!('subject_name' in request.resource.data) || request.resource.data.subject_name == null || request.resource.data.subject_name is string)
+      && (!('teacher_name' in request.resource.data) || request.resource.data.teacher_name == null || request.resource.data.teacher_name is string)
+      && (!('start_time' in request.resource.data) || request.resource.data.start_time == null || request.resource.data.start_time is string)
+      && (!('end_time' in request.resource.data) || request.resource.data.end_time == null || request.resource.data.end_time is string)
+      && (!('location' in request.resource.data) || request.resource.data.location == null || (request.resource.data.location is string && request.resource.data.location.size() <= 100))
+      && (!('notes' in request.resource.data) || request.resource.data.notes == null || (request.resource.data.notes is string && request.resource.data.notes.size() <= 500))
+      && (!('color' in request.resource.data) || request.resource.data.color == null || request.resource.data.color is string)
+      && (!('is_enabled' in request.resource.data) || request.resource.data.is_enabled is bool)
+      && ('created_at' in request.resource.data && request.resource.data.created_at is string)
+      && ('updated_at' in request.resource.data && request.resource.data.updated_at is string);
+    }
+
+    function validExamsPayload() {
+      return request.resource.data.keys().hasOnly([
+        'subject_id', 'subject_name', 'teacher_name', 'exam_name', 'exam_date', 'exam_time', 'location', 'notes', 'color', 'is_completed', 'created_at', 'updated_at'
+      ])
+      && (!('subject_id' in request.resource.data) || request.resource.data.subject_id == null || request.resource.data.subject_id is string)
+      && (!('subject_name' in request.resource.data) || request.resource.data.subject_name == null || request.resource.data.subject_name is string)
+      && (!('teacher_name' in request.resource.data) || request.resource.data.teacher_name == null || request.resource.data.teacher_name is string)
+      && (!('exam_name' in request.resource.data) || request.resource.data.exam_name == null || (request.resource.data.exam_name is string && request.resource.data.exam_name.size() <= 200))
+      && (!('exam_date' in request.resource.data) || request.resource.data.exam_date == null || request.resource.data.exam_date is string)
+      && (!('exam_time' in request.resource.data) || request.resource.data.exam_time == null || request.resource.data.exam_time is string)
+      && (!('location' in request.resource.data) || request.resource.data.location == null || (request.resource.data.location is string && request.resource.data.location.size() <= 100))
+      && (!('notes' in request.resource.data) || request.resource.data.notes == null || (request.resource.data.notes is string && request.resource.data.notes.size() <= 500))
+      && (!('color' in request.resource.data) || request.resource.data.color == null || request.resource.data.color is string)
+      && (!('is_completed' in request.resource.data) || request.resource.data.is_completed is bool)
+      && ('created_at' in request.resource.data && request.resource.data.created_at is string)
+      && ('updated_at' in request.resource.data && request.resource.data.updated_at is string);
+    }
+
+    function validGradesPayload() {
+      return request.resource.data.keys().hasOnly([
+        'subject_id', 'subject_name', 'teacher_name', 'score_10', 'credit', 'note', 'updated_at'
+      ])
+      && request.resource.data.score_10 is number
+      && request.resource.data.score_10 >= 0
+      && request.resource.data.score_10 <= 10
+      && request.resource.data.credit is int
+      && request.resource.data.credit >= 1
+      && request.resource.data.credit <= 10
+      && (!('subject_name' in request.resource.data) || request.resource.data.subject_name == null || (request.resource.data.subject_name is string && request.resource.data.subject_name.size() <= 100))
+      && (!('note' in request.resource.data) || request.resource.data.note == null || (request.resource.data.note is string && request.resource.data.note.size() <= 500));
+    }
+
+    function validTasksPayload() {
+      return request.resource.data.keys().hasOnly([
+        'title', 'description', 'priority', 'status', 'due_date', 'is_completed', 'notes', 'created_at', 'updated_at'
+      ])
+      && request.resource.data.title is string
+      && request.resource.data.title.size() > 0
+      && request.resource.data.title.size() <= 200
+      && (!('description' in request.resource.data) || request.resource.data.description == null || (request.resource.data.description is string && request.resource.data.description.size() <= 2000))
+      && (!('priority' in request.resource.data) || request.resource.data.priority == null || request.resource.data.priority in ['Low', 'Medium', 'High'])
+      && (!('status' in request.resource.data) || request.resource.data.status == null || request.resource.data.status in ['Todo', 'In Progress', 'Done'])
+      && (!('is_completed' in request.resource.data) || request.resource.data.is_completed is bool)
+      && (!('notes' in request.resource.data) || request.resource.data.notes == null || (request.resource.data.notes is string && request.resource.data.notes.size() <= 2000));
+    }
+
+    function validNotesPayload() {
+      return request.resource.data.keys().hasOnly([
+        'title', 'content', 'subject_id', 'subject_name', 'tags', 'created_at', 'updated_at'
+      ])
+      && request.resource.data.title is string
+      && request.resource.data.title.size() > 0
+      && request.resource.data.title.size() <= 200
+      && request.resource.data.content is string
+      && request.resource.data.content.size() > 0
+      && request.resource.data.content.size() <= 20000
+      && (!('subject_id' in request.resource.data) || request.resource.data.subject_id == null || request.resource.data.subject_id is string)
+      && (!('subject_name' in request.resource.data) || request.resource.data.subject_name == null || request.resource.data.subject_name is string)
+      && (!('tags' in request.resource.data) || request.resource.data.tags is list)
+      && (!('created_at' in request.resource.data) || request.resource.data.created_at is string)
+      && (!('updated_at' in request.resource.data) || request.resource.data.updated_at is string);
+    }
+
+    // ─── Rules ────────────────────────────────────────────────────────
+
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSignedInAs(userId);
 
       match /subjects/{subjectId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validSubjectsPayload();
+        allow delete: if isSignedInAs(userId);
       }
 
       match /schedules/{scheduleId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validSchedulesPayload();
+        allow delete: if isSignedInAs(userId);
       }
 
       match /exams/{examId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validExamsPayload();
+        allow delete: if isSignedInAs(userId);
       }
 
       match /notifications/{notificationId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isSignedInAs(userId);
       }
 
       match /settings/{settingId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isSignedInAs(userId);
       }
 
       match /grades/{gradeId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validGradesPayload();
+        allow delete: if isSignedInAs(userId);
       }
 
       match /tasks/{taskId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validTasksPayload();
+        allow delete: if isSignedInAs(userId);
+      }
+
+      match /notes/{noteId} {
+        allow read: if isSignedInAs(userId);
+        allow create, update: if isSignedInAs(userId) && validNotesPayload();
+        allow delete: if isSignedInAs(userId);
       }
     }
   }

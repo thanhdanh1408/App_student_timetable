@@ -1,6 +1,7 @@
 // lib/features/subjects/presentation/widgets/add_edit_subject_form.dart
 import 'package:flutter/material.dart';
 import '../../domain/entities/subject_entity.dart';
+import '/core/l10n/app_localizations.dart';
 
 class AddEditSubjectForm extends StatefulWidget {
   final SubjectEntity? subject;
@@ -44,6 +45,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
@@ -51,7 +53,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
           Icon(widget.subject == null ? Icons.add_circle_outline : Icons.edit, color: Colors.indigo),
           const SizedBox(width: 12),
           Text(
-            widget.subject == null ? "Thêm môn học mới" : "Chỉnh sửa môn học",
+            widget.subject == null ? (l.isVietnamese ? "Thêm môn học mới" : "Add new subject") : (l.isVietnamese ? "Chỉnh sửa môn học" : "Edit subject"),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
@@ -68,11 +70,11 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
-                    labelText: "Tên môn học",
+                    labelText: l.isVietnamese ? "Tên môn học" : "Subject name",
                     prefixIcon: const Icon(Icons.book),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  validator: (v) => v!.isEmpty ? "Vui lòng nhập tên môn" : null,
+                  validator: (v) => v!.isEmpty ? (l.isVietnamese ? "Vui lòng nhập tên môn" : "Please enter subject name") : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -80,7 +82,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                 TextFormField(
                   controller: _teacherCtrl,
                   decoration: InputDecoration(
-                    labelText: "Giảng viên",
+                    labelText: l.isVietnamese ? "Giảng viên" : "Teacher",
                     prefixIcon: const Icon(Icons.person),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -114,7 +116,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                     final Color? picked = await showDialog<Color>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Chọn màu sắc'),
+                        title: Text(l.isVietnamese ? 'Chọn màu sắc' : 'Choose color'),
                         content: SizedBox(
                           width: double.maxFinite,
                           child: GridView.builder(
@@ -152,7 +154,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                   },
                   child: InputDecorator(
                     decoration: InputDecoration(
-                      labelText: "Màu sắc",
+                      labelText: l.isVietnamese ? "Màu sắc" : "Color",
                       prefixIcon: const Icon(Icons.palette),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -168,7 +170,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        const Text('Nhấn để chọn màu'),
+                        Text(l.isVietnamese ? 'Nhấn để chọn màu' : 'Tap to select color'),
                       ],
                     ),
                   ),
@@ -179,11 +181,11 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
                 DropdownButtonFormField<int>(
                   value: _credit,
                   decoration: InputDecoration(
-                    labelText: "Số tín chỉ",
+                    labelText: l.isVietnamese ? "Số tín chỉ" : "Credits",
                     prefixIcon: const Icon(Icons.credit_card),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  items: [1, 2, 3, 4, 5].map((c) => DropdownMenuItem(value: c, child: Text("$c tín chỉ"))).toList(),
+                  items: [1, 2, 3, 4, 5].map((c) => DropdownMenuItem(value: c, child: Text(l.isVietnamese ? "$c tín chỉ" : "$c credits"))).toList(),
                   onChanged: (v) => setState(() => _credit = v!),
                 ),
               ],
@@ -194,7 +196,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
@@ -211,7 +213,7 @@ class _AddEditSubjectFormState extends State<AddEditSubjectForm> {
               Navigator.pop(context);
             }
           },
-          child: Text(widget.subject == null ? "Thêm" : "Lưu"),
+          child: Text(widget.subject == null ? l.add : l.save),
         ),
       ],
     );

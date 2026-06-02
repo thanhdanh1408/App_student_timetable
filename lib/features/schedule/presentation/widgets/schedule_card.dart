@@ -84,7 +84,7 @@ class ScheduleCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Thứ ${schedule.dayOfWeek == 8 ? 'CN' : schedule.dayOfWeek}",
+                              schedule.dayOfWeek == 8 ? "Chủ nhật" : "Thứ ${schedule.dayOfWeek}",
                               style: TextStyle(color: Colors.grey[600], fontSize: 14),
                             ),
                             Text(

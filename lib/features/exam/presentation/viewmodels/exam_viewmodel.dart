@@ -12,7 +12,12 @@ class ExamViewModel with ChangeNotifier {
   final AddExamUsecase _add;
   final UpdateExamUsecase _update;
   final DeleteExamUsecase _delete;
-  final NotificationSettingsProvider? _notificationSettings;
+  NotificationSettingsProvider? _notificationSettings;
+
+  /// Update the notification settings reference (called by ProxyProvider)
+  void updateNotificationSettings(NotificationSettingsProvider? settings) {
+    _notificationSettings = settings;
+  }
 
   ExamViewModel({
     required GetExamsUsecase get,

@@ -1,29 +1,37 @@
 import 'package:flutter/material.dart';
 
 final appLightTheme = ThemeData(
-  primaryColor: Colors.black,
-  scaffoldBackgroundColor: Colors.white,
+  useMaterial3: true,
+  colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
   appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.black,
+    foregroundColor: Colors.white,
     elevation: 0,
-    iconTheme: IconThemeData(color: Colors.black),
-  ),
-  textTheme: const TextTheme(
-    bodyLarge: TextStyle(color: Colors.black),
-    bodyMedium: TextStyle(color: Colors.black87),
-  ),
-  buttonTheme: const ButtonThemeData(
-    buttonColor: Colors.black,
-    textTheme: ButtonTextTheme.primary,
+    iconTheme: IconThemeData(color: Colors.white),
   ),
   inputDecorationTheme: InputDecorationTheme(
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(8),
-      borderSide: BorderSide.none,
+      borderRadius: BorderRadius.circular(12),
     ),
-    filled: true,
-    fillColor: Colors.grey[200],
   ),
 );
 
-// Dark theme có thể thêm sau từ settings.
+final appDarkTheme = ThemeData(
+  useMaterial3: true,
+  brightness: Brightness.dark,
+  colorScheme: ColorScheme.fromSeed(
+    seedColor: Colors.indigo,
+    brightness: Brightness.dark,
+  ),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.black,
+    foregroundColor: Colors.white,
+    elevation: 0,
+    iconTheme: IconThemeData(color: Colors.white),
+  ),
+  inputDecorationTheme: InputDecorationTheme(
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+  ),
+);

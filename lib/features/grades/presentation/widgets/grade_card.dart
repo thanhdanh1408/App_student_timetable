@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../domain/entities/grade_entity.dart';
+import '/core/l10n/app_localizations.dart';
 
 class GradeCard extends StatelessWidget {
   final GradeEntity grade;
@@ -24,6 +25,7 @@ class GradeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _gradeColor(grade.score10);
+    final l = AppLocalizations.of(context);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -56,19 +58,21 @@ class GradeCard extends StatelessWidget {
                     if (value == 'edit') onEdit();
                     if (value == 'delete') onDelete();
                   },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Sửa')),
-                    PopupMenuItem(value: 'delete', child: Text('Xóa')),
+                  itemBuilder: (context) => [
+                    PopupMenuItem(value: 'edit', child: Text(l.edit)),
+                    PopupMenuItem(value: 'delete', child: Text(l.delete)),
                   ],
                 ),
               ],
             ),
             const SizedBox(height: 6),
-            Text('Tín chỉ: ${grade.credit} • Hệ 4: ${grade.score4.toStringAsFixed(2)}'),
+            Text(l.isVietnamese 
+                ? 'Tín chỉ: ${grade.credit} • Hệ 4: ${grade.score4.toStringAsFixed(2)}'
+                : 'Credits: ${grade.credit} • GPA (4): ${grade.score4.toStringAsFixed(2)}'),
             if (grade.note != null && grade.note!.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                'Ghi chú: ${grade.note}',
+                l.isVietnamese ? 'Ghi chú: ${grade.note}' : 'Note: ${grade.note}',
                 style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],

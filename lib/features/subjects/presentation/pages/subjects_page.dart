@@ -1,7 +1,13 @@
 // lib/features/subjects/presentation/pages/subjects_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as provider_pkg;
+import '/core/l10n/app_localizations.dart';
 import '/core/widgets/app_drawer.dart';
+import '/core/widgets/shimmer_loading.dart';
+import '/core/widgets/empty_state_widget.dart';
+import '/core/widgets/error_state_widget.dart';
+import '../viewmodels/subjects_viewmodel.dart';
 import '../providers/subjects_provider.dart';
 import '../widgets/subject_card.dart';
 import '../widgets/subject_form_dialog.dart';
@@ -45,10 +51,12 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
 
   /// Show add/edit dialog
   void _showFormDialog({SubjectEntity? subject}) {
+    final existingSubjects = ref.read(subjectsListProvider).asData?.value ?? [];
     showDialog(
       context: context,
       builder: (_) => SubjectFormDialog(
         subject: subject,
+        existingSubjects: existingSubjects,
         onSave: (updatedSubject) async {
           try {
             if (subject == null) {
@@ -61,6 +69,10 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
             
             // Refresh the list
             ref.invalidate(subjectsListProvider);
+            if (mounted) {
+              // Keep Provider-based consumers (Grades/Notes dialogs) in sync.
+              provider_pkg.Provider.of<SubjectsViewModel>(context, listen: false).load();
+            }
             
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -84,39 +96,38 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
 
   /// Delete subject with confirmation
   void _deleteSubject(SubjectEntity subject) {
+    final pageContext = context;
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+      context: pageContext,
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Xóa môn học'),
         content: Text('Bạn có chắc muốn xóa "${subject.subjectName}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy'),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
                 if (subject.id != null) {
                   await ref.read(subjectsControllerProvider.notifier).deleteSubject(subject.id!);
-                  
+
                   // Refresh the list
                   ref.invalidate(subjectsListProvider);
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ Xóa thành công')),
-                    );
-                  }
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('❌ Lỗi: $e'), backgroundColor: Colors.red),
+                  if (!pageContext.mounted) return;
+                  provider_pkg.Provider.of<SubjectsViewModel>(pageContext, listen: false).load();
+                  ScaffoldMessenger.of(pageContext).showSnackBar(
+                    const SnackBar(content: Text('✅ Xóa thành công')),
                   );
                 }
+              } catch (e) {
+                if (!pageContext.mounted) return;
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  SnackBar(content: Text('❌ Lỗi: $e'), backgroundColor: Colors.red),
+                );
               }
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),
@@ -130,43 +141,33 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
   Widget build(BuildContext context) {
     // Watch the subjects list provider
     final subjectsAsyncValue = ref.watch(subjectsListProvider);
+    final l = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Môn học', style: TextStyle(color: Colors.white)),
+        title: Text(l.subjects, style: const TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.white),
             onPressed: () => _showFormDialog(),
-            tooltip: 'Thêm môn học',
+            tooltip: l.addSubject,
           ),
         ],
       ),
       drawer: const AppDrawer(currentRoute: '/subjects'),
       body: subjectsAsyncValue.when(
         // Loading state
-        loading: () => const Center(child: CircularProgressIndicator()),
-        
+        loading: () => const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: ShimmerListLoading(itemCount: 5, itemHeight: 90),
+        ),
         // Error state
-        error: (error, stackTrace) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              const Text('Lỗi tải dữ liệu', style: TextStyle(fontSize: 18)),
-              const SizedBox(height: 8),
-              Text(error.toString(), style: const TextStyle(color: Colors.grey)),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.refresh(subjectsListProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Thử lại'),
-              ),
-            ],
-          ),
+        error: (error, stackTrace) => ErrorStateWidget(
+          message: 'Lỗi tải dữ liệu',
+          detail: error.toString(),
+          onRetry: () => ref.refresh(subjectsListProvider),
         ),
         
         // Success state
@@ -181,7 +182,7 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Tìm môn học hoặc giảng viên...',
+                    hintText: l.searchSubjectOrTeacher,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -210,36 +211,28 @@ class _SubjectsPageState extends ConsumerState<SubjectsPage> {
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
                   child: filteredSubjects.isEmpty
-                      ? Center(
+                      ? EmptyStateWidget(
                           key: const ValueKey('subjects-empty'),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.search_off,
-                                size: 80,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _searchQuery.isEmpty
-                                    ? 'Chưa có môn học nào'
-                                    : 'Không tìm thấy kết quả',
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _searchQuery.isEmpty
-                                    ? 'Nhấn nút + để thêm'
-                                    : 'Thử tìm kiếm với từ khóa khác',
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                            ],
-                          ),
+                          icon: _searchQuery.isEmpty
+                              ? Icons.menu_book_outlined
+                              : Icons.search_off,
+                          title: _searchQuery.isEmpty
+                              ? l.noSubjects
+                              : l.noResults,
+                          subtitle: _searchQuery.isEmpty
+                              ? (l.isVietnamese ? 'Nhấn nút + để thêm môn học' : 'Tap + to add a subject')
+                              : l.tryOtherKeyword,
+                          actionLabel: _searchQuery.isEmpty ? l.addSubject : null,
+                          onAction: _searchQuery.isEmpty ? () => _showFormDialog() : null,
                         )
                       : ListView.builder(
                           key: const ValueKey('subjects-list'),
-                          padding: const EdgeInsets.all(12),
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            12,
+                            12,
+                            MediaQuery.of(context).viewPadding.bottom + 12,
+                          ),
                           itemCount: filteredSubjects.length,
                           itemBuilder: (context, index) {
                             final subject = filteredSubjects[index];

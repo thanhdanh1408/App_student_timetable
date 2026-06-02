@@ -12,7 +12,12 @@ class ScheduleViewModel with ChangeNotifier {
   final AddScheduleUsecase _add;
   final UpdateScheduleUsecase _update;
   final DeleteScheduleUsecase _delete;
-  final NotificationSettingsProvider? _notificationSettings;
+  NotificationSettingsProvider? _notificationSettings;
+
+  /// Update the notification settings reference (called by ProxyProvider)
+  void updateNotificationSettings(NotificationSettingsProvider? settings) {
+    _notificationSettings = settings;
+  }
 
   ScheduleViewModel({
     required GetSchedulesUsecase get,
@@ -68,9 +73,10 @@ class ScheduleViewModel with ChangeNotifier {
     try {
       await _update(s);
       await load();
-      // Reschedule notification
+      // Reschedule notification - cancel both primary and weekly
       if (s.id != null) {
         await NotificationService().cancelNotification(s.id!);
+        await NotificationService().cancelNotification('${s.id!}_weekly');
       }
       await _scheduleNotificationForSchedule(s);
     } catch (e) {
@@ -82,8 +88,9 @@ class ScheduleViewModel with ChangeNotifier {
   Future<void> delete(String id) async {
     try {
       await _delete(id);
-      // Cancel notification for this schedule
+      // Cancel both the primary and weekly recurring notifications
       await NotificationService().cancelNotification(id);
+      await NotificationService().cancelNotification('${id}_weekly');
       await load();
     } catch (e) {
       _error = e.toString();
@@ -193,6 +200,18 @@ class ScheduleViewModel with ChangeNotifier {
         payload: 'schedule_${schedule.id}',
         type: 'schedule',
       );
+
+      // Also schedule weekly recurring for next week using a different ID
+      // so the immediate notification and weekly one don't cancel each other
+      final nextWeekTime = notificationTime.add(const Duration(days: 7));
+      await NotificationService().scheduleWeeklyNotification(
+        id: '${schedule.id!}_weekly',
+        title: '📚 Sắp đến giờ học: ${schedule.subjectName}',
+        body: body,
+        scheduledTime: nextWeekTime,
+        payload: 'schedule_${schedule.id}',
+        type: 'schedule',
+      );
     } else {
       // Build notification body with location, time, and notes
       String body = 'Phòng ${schedule.location} • ${schedule.startTime}${schedule.endTime != null ? " - ${schedule.endTime}" : ""}';
@@ -200,7 +219,8 @@ class ScheduleViewModel with ChangeNotifier {
         body += '\nGhi chú: ${schedule.notes}';
       }
       
-      await NotificationService().scheduleNotification(
+      // Use weekly recurring notification so it fires every week
+      await NotificationService().scheduleWeeklyNotification(
         id: schedule.id!,
         title: '📚 Sắp đến giờ học: ${schedule.subjectName}',
         body: body,

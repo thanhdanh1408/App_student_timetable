@@ -26,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
     return Consumer<AuthProvider>(
       builder: (context, auth, _) {
         return Scaffold(
-          backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           body: SingleChildScrollView(
             child: SizedBox(
               height: MediaQuery.of(context).size.height,
@@ -35,9 +35,9 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       "Đăng nhập",
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0)),
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurface),
                     ),
                     const SizedBox(height: 30),
                     if (auth.error != null) ...[
@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                     TextField(
                       controller: _emailCtrl,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Email",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -64,7 +64,7 @@ class _LoginPageState extends State<LoginPage> {
                     TextField(
                       controller: _passCtrl,
                       obscureText: true,
-                      style: const TextStyle(color: Colors.black),
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: "Mật khẩu",
                         hintStyle: TextStyle(color: Colors.grey[600]),
@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.black),
+                        style: ElevatedButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
                         onPressed: auth.isLoading
                             ? null
                             : () async {
@@ -101,11 +101,57 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey[400])),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text("hoặc", style: TextStyle(color: Colors.grey[600])),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey[400])),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Google Sign-In Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: BorderSide(color: Colors.grey[400]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: auth.isLoading
+                            ? null
+                            : () async {
+                                final success = await auth.signInWithGoogle();
+                                if (success && context.mounted) {
+                                  context.go('/home');
+                                }
+                              },
+                        icon: const Text(
+                          'G',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        label: Text(
+                          "Đăng nhập bằng Google",
+                          style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 15),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     GestureDetector(
                       onTap: () => context.go('/register'),
-                      child: const Text(
+                      child: Text(
                         "Chưa có tài khoản? Đăng ký ngay",
-                        style: TextStyle(color: Colors.black),
+                        style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       ),
                     ),
                   ],

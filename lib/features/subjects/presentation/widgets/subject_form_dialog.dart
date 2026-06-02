@@ -2,12 +2,14 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/subject_entity.dart';
 import '../../../../core/utils/validators.dart';
+import '/core/l10n/app_localizations.dart';
 
 class SubjectFormDialog extends StatefulWidget {
   final SubjectEntity? subject;
   final Function(SubjectEntity) onSave;
+  final List<SubjectEntity> existingSubjects;
 
-  const SubjectFormDialog({super.key, this.subject, required this.onSave});
+  const SubjectFormDialog({super.key, this.subject, required this.onSave, this.existingSubjects = const []});
 
   @override
   State<SubjectFormDialog> createState() => _SubjectFormDialogState();
@@ -51,6 +53,16 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
     final nameResult = FormValidator.validateSubjectName(_nameCtrl.text);
     if (nameResult.isFailure()) {
       setState(() => _validationError = nameResult.failureOrNull()?.message);
+      return false;
+    }
+
+    // Check duplicate subject name
+    final trimmedName = _nameCtrl.text.trim().toLowerCase();
+    final isDuplicate = widget.existingSubjects.any((s) =>
+        s.subjectName.toLowerCase() == trimmedName &&
+        s.id != widget.subject?.id);
+    if (isDuplicate) {
+      setState(() => _validationError = 'Tên môn học đã tồn tại!');
       return false;
     }
 
@@ -100,9 +112,10 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(
-        widget.subject == null ? "Thêm môn học" : "Sửa môn học",
+        widget.subject == null ? (l.isVietnamese ? "Thêm môn học" : "Add subject") : (l.isVietnamese ? "Sửa môn học" : "Edit subject"),
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       content: SingleChildScrollView(
@@ -137,9 +150,9 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
               controller: _nameCtrl,
               enabled: !_isLoading,
               decoration: InputDecoration(
-                labelText: "Tên môn học *",
+                labelText: l.isVietnamese ? "Tên môn học *" : "Subject Name *",
                 border: const OutlineInputBorder(),
-                hintText: "Nhập tên môn học",
+                hintText: l.isVietnamese ? "Nhập tên môn học" : "Enter subject name",
                 prefixIcon: const Icon(Icons.book),
               ),
             ),
@@ -149,9 +162,9 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
               controller: _teacherCtrl,
               enabled: !_isLoading,
               decoration: InputDecoration(
-                labelText: "Giảng viên",
+                labelText: l.isVietnamese ? "Giảng viên" : "Teacher",
                 border: const OutlineInputBorder(),
-                hintText: "Nhập tên giảng viên (tùy chọn)",
+                hintText: l.isVietnamese ? "Nhập tên giảng viên (tùy chọn)" : "Enter teacher name (optional)",
                 prefixIcon: const Icon(Icons.person),
               ),
             ),
@@ -160,10 +173,10 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
             InkWell(
               onTap: _isLoading ? null : _pickColor,
               child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: "Màu sắc",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.palette),
+                decoration: InputDecoration(
+                  labelText: l.isVietnamese ? "Màu sắc" : "Color",
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.palette),
                 ),
                 child: Row(
                   children: [
@@ -177,7 +190,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Text('Nhấn để chọn'),
+                    Text(l.isVietnamese ? 'Nhấn để chọn' : 'Tap to select'),
                   ],
                 ),
               ),
@@ -185,10 +198,10 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
             const SizedBox(height: 12),
             // Credit dropdown
             InputDecorator(
-              decoration: const InputDecoration(
-                labelText: "Tín chỉ",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.numbers),
+              decoration: InputDecoration(
+                labelText: l.isVietnamese ? "Tín chỉ" : "Credits",
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.numbers),
               ),
               child: DropdownButton<int>(
                 value: _credit,
@@ -198,7 +211,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                 items: [1, 2, 3, 4]
                     .map((c) => DropdownMenuItem<int>(
                           value: c,
-                          child: Text("$c tín chỉ"),
+                          child: Text(l.isVietnamese ? "$c tín chỉ" : "$c credits"),
                         ))
                     .toList(),
                 onChanged: _isLoading ? null : (value) {
@@ -212,7 +225,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
       actions: [
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
-          child: const Text("Hủy", style: TextStyle(color: Colors.black)),
+          child: Text(l.cancel, style: const TextStyle(color: Colors.black)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -230,7 +243,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                   ),
                 )
               : Text(
-                  widget.subject == null ? "Thêm" : "Lưu",
+                  widget.subject == null ? l.add : l.save,
                   style: const TextStyle(color: Colors.white),
                 ),
         ),
@@ -265,7 +278,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
     final Color? picked = await showDialog<Color>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Chọn màu sắc'),
+        title: Text(AppLocalizations.of(context).isVietnamese ? 'Chọn màu sắc' : 'Choose color'),
         content: SizedBox(
           width: double.maxFinite,
           child: GridView.builder(

@@ -10,6 +10,15 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   ScheduleRepositoryImpl._internal();
 
   final FirebaseService _firebase = FirebaseService();
+  List<ScheduleEntity>? _cache;
+  DateTime? _cacheAt;
+  String? _cachedUserId;
+
+  bool get _isCacheFresh =>
+      _cache != null &&
+      _cacheAt != null &&
+      _cachedUserId == _firebase.currentUserId &&
+      DateTime.now().difference(_cacheAt!).inSeconds < 60;
 
   /// Get Firestore collection reference for schedules
   CollectionReference<Map<String, dynamic>> get _schedulesCollection =>
@@ -22,6 +31,10 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
   @override
   Future<List<ScheduleEntity>> getAll() async {
     try {
+      if (_isCacheFresh) {
+        return List<ScheduleEntity>.from(_cache!);
+      }
+
       if (!_firebase.isAuthenticated) {
         print('❌ Not authenticated');
         return [];
@@ -41,7 +54,7 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
       }
 
       // Then get all schedules
-      final snapshot = await _schedulesCollection.get();
+      final snapshot = await _schedulesCollection.orderBy('day_of_week').get();
 
       print('📋 Raw response from schedules query: ${snapshot.docs.length} docs');
 
@@ -66,6 +79,9 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
       }).toList();
 
       print('✅ Loaded ${schedules.length} schedules from Firestore');
+      _cache = schedules;
+      _cacheAt = DateTime.now();
+      _cachedUserId = _firebase.currentUserId;
       return schedules;
     } catch (e) {
       print('❌ Error loading schedules: $e');
@@ -85,18 +101,41 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
         throw Exception('User ID is null');
       }
 
+      // Get subject info to denormalize
+      String subjectName = '';
+      String teacherName = '';
+      
+      if (schedule.subjectId != null) {
+        try {
+          final subjectDoc = await _subjectsCollection.doc(schedule.subjectId!).get();
+          if (subjectDoc.exists) {
+            subjectName = subjectDoc.data()?['subject_name'] ?? '';
+            teacherName = subjectDoc.data()?['teacher_name'] ?? '';
+          }
+        } catch (e) {
+          print('⚠️ Warning: Could not fetch subject info: $e');
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
       final docRef = await _schedulesCollection.add({
         'subject_id': schedule.subjectId,
+        'subject_name': subjectName,
+        'teacher_name': teacherName,
         'day_of_week': schedule.dayOfWeek,
         'start_time': schedule.startTime,
         'end_time': schedule.endTime,
-        'location': schedule.location,
+        'location': schedule.location ?? '',
+        'notes': schedule.notes ?? '',
         'color': schedule.color,
-        'notes': schedule.notes,
         'is_enabled': schedule.isEnabled,
+        'created_at': now,
+        'updated_at': now,
       });
 
       final scheduleId = docRef.id;
+      _cache = null;
+      _cacheAt = null;
       print('✅ Schedule added to Firestore: ${schedule.subjectName}, ID: $scheduleId');
       return scheduleId;
     } catch (e) {
@@ -116,17 +155,39 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
         throw Exception('Schedule ID cannot be null');
       }
 
+      // Get subject info to denormalize
+      String subjectName = '';
+      String teacherName = '';
+      
+      if (schedule.subjectId != null) {
+        try {
+          final subjectDoc = await _subjectsCollection.doc(schedule.subjectId!).get();
+          if (subjectDoc.exists) {
+            subjectName = subjectDoc.data()?['subject_name'] ?? '';
+            teacherName = subjectDoc.data()?['teacher_name'] ?? '';
+          }
+        } catch (e) {
+          print('⚠️ Warning: Could not fetch subject info: $e');
+        }
+      }
+
+      final now = DateTime.now().toIso8601String();
       await _schedulesCollection.doc(schedule.id!).update({
         'subject_id': schedule.subjectId,
+        'subject_name': subjectName,
+        'teacher_name': teacherName,
         'day_of_week': schedule.dayOfWeek,
         'start_time': schedule.startTime,
         'end_time': schedule.endTime,
-        'location': schedule.location,
+        'location': schedule.location ?? '',
+        'notes': schedule.notes ?? '',
         'color': schedule.color,
-        'notes': schedule.notes,
         'is_enabled': schedule.isEnabled,
+        'updated_at': now,
       });
 
+      _cache = null;
+      _cacheAt = null;
       print('✅ Schedule updated in Firestore: ${schedule.subjectName}');
     } catch (e) {
       print('❌ Error updating schedule: $e');
@@ -143,6 +204,8 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
 
       await _schedulesCollection.doc(id).delete();
 
+      _cache = null;
+      _cacheAt = null;
       print('✅ Schedule deleted from Firestore: ID $id');
     } catch (e) {
       print('❌ Error deleting schedule: $e');

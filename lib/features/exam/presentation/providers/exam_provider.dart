@@ -30,13 +30,13 @@ final deleteExamUsecaseProvider = Provider<DeleteExamUsecase>((ref) {
 });
 
 /// Exams list stream provider (reactive)
-final examsListProvider = FutureProvider.autoDispose((ref) async {
+final examsListProvider = FutureProvider((ref) async {
   final usecase = ref.watch(getExamsUsecaseProvider);
   return usecase.call();
 });
 
 /// Exams controller provider (for state mutations)
-final examControllerProvider = StateNotifierProvider.autoDispose<
+final examControllerProvider = StateNotifierProvider<
     ExamController,
     AsyncValue<List>>(
   (ref) {
@@ -47,6 +47,7 @@ final examControllerProvider = StateNotifierProvider.autoDispose<
       addUsecase: addUsecase,
       updateUsecase: updateUsecase,
       deleteUsecase: deleteUsecase,
+      ref: ref,
     );
   },
 );

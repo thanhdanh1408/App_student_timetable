@@ -15,30 +15,42 @@ class _PermissionCheckPageState extends State<PermissionCheckPage> {
   @override
   void initState() {
     super.initState();
-    _checkAndRequestPermissions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Thêm timeout 5 giây để đảm bảo app không bao giờ bị treo vĩnh viễn
+      Future.any([
+        _checkAndRequestPermissions(),
+        Future.delayed(const Duration(seconds: 5)),
+      ]).then((_) {
+        if (mounted) _navigateToNextScreen();
+      });
+    });
   }
 
   Future<void> _checkAndRequestPermissions() async {
-    // Permission handler không hoạt động trên web
-    if (kIsWeb) {
-      _navigateToNextScreen();
-      return;
-    }
-    
-    final a = await Permission.notification.isDenied;
-    final b = await Permission.calendar.isDenied;
-    if (a || b) {
-      await [
-        Permission.notification,
-        Permission.calendar,
-      ].request();
-    }
-    _navigateToNextScreen();
+    if (kIsWeb) return;
 
+    // KHÔNG request Permission.notification ở đây.
+    // flutter_local_notifications v17+ tự động xử lý quyền thông báo
+    // trong quá trình initialize() ở main(). Request thêm sẽ gây xung đột.
+
+    // Chỉ request Calendar permission (không liên quan đến NotificationService)
+    // Đợi 800ms để NotificationService hoàn tất request permission của nó trước
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+
+    try {
+      final calendarStatus = await Permission.calendar.status;
+      if (calendarStatus.isDenied) {
+        await Permission.calendar.request();
+      }
+    } catch (e) {
+      // Bỏ qua lỗi permission để app không bị treo
+      debugPrint('⚠️ Calendar permission request failed: $e');
+    }
   }
 
   void _navigateToNextScreen() {
-    // Chuyển đến màn hình chính sau khi kiểm tra quyền
+    if (!mounted) return;
     context.go('/login');
   }
 
